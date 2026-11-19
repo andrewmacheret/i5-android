@@ -106,7 +106,23 @@ It can't know about a closure WSDOT hasn't posted yet, like an emergency repair 
 
 ## Install
 
-There's no Play Store listing. You build it yourself with [Android Studio](https://developer.android.com/studio), which brings the SDK and a JDK. The app needs Android 8.0 or later.
+There's no Play Store listing. You build it yourself with [Android Studio](https://developer.android.com/studio), which brings the SDK, a JDK and `adb`. The app needs Android 8.0 or later.
+
+### 1. Get your phone ready
+
+1. Turn on developer options: open **Settings > About phone** and tap **Build number** seven times.
+2. Turn on **Settings > System > Developer options > USB debugging**.
+3. Plug the phone into your computer and tap **Allow** on the "Allow USB debugging?" prompt.
+
+Check that `adb` sees it. Android Studio puts `adb` in `~/Library/Android/sdk/platform-tools` on a Mac:
+
+```bash
+~/Library/Android/sdk/platform-tools/adb devices
+```
+
+Your phone should be listed as `device`. If it says `unauthorized`, unlock the phone and accept the prompt.
+
+### 2. Build and install
 
 ```bash
 git clone https://github.com/andrewmacheret/i5-android.git
@@ -114,11 +130,27 @@ cd i5-android
 make release
 ```
 
-That builds a release APK and installs it on the connected phone or emulator. Turn on [USB debugging](https://developer.android.com/studio/debug/dev-options) on your phone first. If more than one device is connected, pick one with `ANDROID_SERIAL=<serial> make release` (see `adb devices`).
+That builds the release APK and installs it with `adb`. If more than one device is connected, such as a phone and an emulator, name the one you want with the serial from `adb devices`:
 
-Then long press your home screen, tap **Widgets**, and drag **I-5 Express** onto it. Or open the app and tap **Add** in settings.
+```bash
+ANDROID_SERIAL=<serial> make release
+```
 
-The release build is signed with your local debug key, so it's for your own devices only.
+To run the steps yourself instead of using `make`:
+
+```bash
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+./gradlew :app:assembleRelease
+~/Library/Android/sdk/platform-tools/adb -s <serial> install -r app/build/outputs/apk/release/app-release.apk
+```
+
+`-r` keeps the app's data and widgets when you install over an older copy. If Google Play Protect warns about an unknown app, choose to install anyway. It hasn't seen this app before because you built it.
+
+### 3. Add the widget
+
+Long press your home screen, tap **Widgets**, and drag **I-5 Express** onto it. Or open the app and tap **Add** in settings. Turn on **Notify when lanes change** in the app if you want alerts.
+
+The release build is signed with your local debug key, so it's for your own devices only. To remove it, run `adb uninstall com.andrewmacheret.i5`, or uninstall it like any other app.
 
 ### Battery and alarms
 
