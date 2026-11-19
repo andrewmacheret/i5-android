@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="window">#141218</color>
+    <color name="preview_background">#2B2930</color>
+    <color name="preview_subtext">#CAC4D0</color>
+</resources>

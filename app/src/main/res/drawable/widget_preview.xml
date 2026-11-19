@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget picker preview before Android 12 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/preview_background" />
+    <item
+        android:drawable="@drawable/badge_north"
+        android:gravity="center"
+        android:height="48dp"
+        android:width="48dp" />
+</layer-list>

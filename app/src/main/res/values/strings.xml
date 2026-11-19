@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">I-5 Express</string>
+    <string name="widget_name">I-5 express lanes</string>
+    <string name="widget_description">Which way the Seattle I-5 express lanes are open. Shows ⚠ when it can\'t be sure.</string>
+    <string name="preview_status">Northbound</string>
+    <string name="preview_detail">Closes at 11:00 PM</string>
+    <string name="channel_name">Lane changes</string>
+    <string name="channel_description">When the express lanes switch direction or close, and when the app can\'t confirm them</string>
+</resources>
