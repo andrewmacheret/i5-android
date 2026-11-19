@@ -23,15 +23,31 @@ import kotlinx.coroutines.withContext
  * Debug builds only. Draws the real widget at common home screen sizes, for screenshots:
  *
  *   adb shell am start -n com.andrewmacheret.i5/.WidgetGalleryActivity
+ *
+ * Add `--ez more true` to also draw narrow and in-between sizes, for checking that no text gets cut off.
  */
 class WidgetGalleryActivity : Activity() {
     // Cell sizes from a Pixel launcher, about 92 x 105 dp each
-    private val sizes = listOf(
+    private val common = listOf(
         "1 × 1" to DpSize(92.dp, 105.dp),
         "2 × 1" to DpSize(184.dp, 105.dp),
         "4 × 1" to DpSize(368.dp, 105.dp),
         "3 × 2" to DpSize(276.dp, 210.dp),
     )
+
+    // Smaller phones, denser grids and big fonts make cells narrower
+    private val more = listOf(
+        "1 × 1 at 74 dp" to DpSize(74.dp, 90.dp),
+        "1 × 1 at 60 dp" to DpSize(60.dp, 90.dp),
+        "1 × 1 at 48 dp" to DpSize(48.dp, 90.dp),
+        "2 × 1 at 150 dp" to DpSize(150.dp, 90.dp),
+        "3 × 1" to DpSize(276.dp, 105.dp),
+        "3 × 1 at 240 dp" to DpSize(240.dp, 90.dp),
+        "2 × 2" to DpSize(184.dp, 210.dp),
+        "2 × 2 at 150 dp" to DpSize(150.dp, 180.dp),
+    )
+
+    private val sizes get() = if (intent.getBooleanExtra("more", false)) common + more else common
 
     @OptIn(ExperimentalGlanceRemoteViewsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -17,7 +17,7 @@ It's the Android version of [i5-macos-menubar](https://github.com/andrewmacheret
 - An amber **⚠ Can't confirm** replaces the badge whenever the app can't vouch for the status, with the reason. It still shows the posted schedule, labeled "not confirmed". See [When to trust it](#when-to-trust-it).
 - A gray **? Checking…** shows briefly while the app re-reads WSDOT's page.
 - The refresh button in the corner re-reads WSDOT's page. Tapping anywhere else opens the app.
-- The widget updates itself at the exact minute the lanes change, at midnight, and when its data gets too old to trust. It doesn't wait for the next 15-minute check.
+- The widget updates itself at the exact minute the lanes change, at midnight, and when its data gets too old to trust. It doesn't wait for the next scheduled check.
 
 <img src="docs/widget-states.png" width="600" alt="Six widgets: northbound, southbound, closed overnight, closed for a weekend closure, checking, and can't confirm on Thanksgiving">
 
@@ -33,7 +33,15 @@ The widget is resizable. Smaller sizes drop detail but keep the badge and the ne
 - **2 × 1 and wider:** the badge, direction, next change and today's timeline.
 - **3 × 2 and bigger (the default):** everything above, plus the next changes, hour labels, when WSDOT was last read, and the refresh button.
 
+Text is never cut off. It's measured at your phone's font size, and when it doesn't fit the widget uses shorter wording: "Closes at 11:00 PM", then "until 11:00 PM", then "11:00 PM", and "North" for "Northbound". A time never splits across two lines. On a very narrow 1 × 1 the widget leaves the time off rather than cut it.
+
 <img src="docs/widget-sizes.png" width="380" alt="The widget at 1 by 1, 2 by 1, 4 by 1 and 3 by 2 cells">
+
+### Dark mode
+
+The app and widget follow the phone's light or dark mode. On Android 12 and later the app also picks up your wallpaper colors.
+
+<img src="docs/dark-mode.png" width="600" alt="The app and the widget in dark mode">
 
 ### App
 
@@ -46,7 +54,7 @@ Tap the widget, or open **I-5 Express** from the app drawer:
 - **Coming up:** the next four changes with countdowns. A ⚠ marks days that may not follow the regular schedule.
 - **Planned changes:** weekend closures, early closing dates, and holidays in the next two weeks.
 - **Regular schedule and sources:** the weekly schedule as WSDOT posts it, and links to every page the data comes from.
-- Pull down, or tap the refresh button, to re-read WSDOT's page. It also refreshes when you open the app.
+- Pull down, or tap the refresh button, to re-read WSDOT's page. Everything the app shows comes from that one page, about 40 KB, so a refresh usually takes well under a second. It also refreshes when you open the app, within the limits in [Settings](#settings).
 
 Times are always Seattle time. If your phone is set to another time zone, the app and widget say so.
 
@@ -78,6 +86,9 @@ It asks for notification permission when you turn this on, and shows a link to A
 ### Settings
 
 - **Notify when lanes change**, described above.
+- **Check WSDOT on Wi-Fi every** 15 minutes (the default), 30 minutes or 1 hour.
+- **Check WSDOT on mobile data every** 15 minutes, 30 minutes, 1 hour (the default), or **Off**. Each check uses about 45 KB, so 1 hour is at most about 32 MB a month and 15 minutes about 130 MB. On mobile data, opening the app also waits for this setting. With **Off**, the app only uses mobile data when you tap refresh or add a widget. Away from Wi-Fi, the widget then shows ⚠ once the data is 2 hours old, and the app checks again when you're back on Wi-Fi.
+- Wi-Fi here means any network Android doesn't treat as metered. A phone hotspot counts as mobile data. Tapping refresh always checks, on any network.
 - **Home screen widget:** an **Add** button that puts the widget on your home screen, on launchers that support it.
 - If Android turned off exact alarms for the app, a note explains that the widget may update a few minutes late, with a button to allow them.
 
@@ -87,7 +98,7 @@ WSDOT doesn't publish a live feed for the express lanes. This app reads [WSDOT's
 
 It only shows **N**, **S** or **✕** when all of these are true:
 
-- It read WSDOT's page in the last 2 hours. It checks every 15 minutes or so, when you open the app, and after the phone restarts.
+- It read WSDOT's page in the last 2 hours. It checks on a schedule you pick in [Settings](#settings), when you open the app, and after the phone restarts.
 - Every part of the page made sense. A new section or a line it can't read counts as a problem.
 - The schedule itself looks sane, with no overlapping or backwards time ranges.
 - Nothing on the page suggests today is different. That includes notices dated today, undated notices, and planned closures today without exact times.
@@ -122,7 +133,17 @@ Use the file name of the version you downloaded. Then [add the widget](#3-add-th
 
 ### Build it yourself
 
-You need [Android Studio](https://developer.android.com/studio), which brings the SDK, a JDK and `adb`.
+You need [Android Studio](https://developer.android.com/studio), which brings the SDK, a JDK and `adb`. Building works on macOS, Linux and Windows. The `make` commands need macOS or Linux. On Windows, use the Gradle steps under [Build and install](#2-build-and-install).
+
+Android Studio puts these in different places on each system:
+
+| | SDK, with `adb` in its `platform-tools` folder | Bundled JDK |
+| --- | --- | --- |
+| macOS | `~/Library/Android/sdk` | `/Applications/Android Studio.app/Contents/jbr/Contents/Home` |
+| Linux | `~/Android/Sdk` | the `jbr` folder where you unpacked Android Studio |
+| Windows | `%LOCALAPPDATA%\Android\Sdk` | `C:\Program Files\Android\Android Studio\jbr` |
+
+The commands below say `adb`. Add the SDK's `platform-tools` folder to your PATH, or type the full path.
 
 ### 1. Get your phone ready
 
@@ -130,10 +151,10 @@ You need [Android Studio](https://developer.android.com/studio), which brings th
 2. Turn on **Settings > System > Developer options > USB debugging**.
 3. Plug the phone into your computer and tap **Allow** on the "Allow USB debugging?" prompt.
 
-Check that `adb` sees it. Android Studio puts `adb` in `~/Library/Android/sdk/platform-tools` on a Mac:
+Check that `adb` sees it:
 
 ```bash
-~/Library/Android/sdk/platform-tools/adb devices
+adb devices
 ```
 
 Your phone should be listed as `device`. If it says `unauthorized`, unlock the phone and accept the prompt.
@@ -146,19 +167,20 @@ cd i5-android
 make release
 ```
 
-That builds the release APK and installs it with `adb`. If more than one device is connected, such as a phone and an emulator, name the one you want with the serial from `adb devices`:
+That builds the release APK and installs it with `adb`. It finds the SDK and JDK in the places above. If yours are elsewhere, set `ANDROID_HOME` and `JAVA_HOME`. If more than one device is connected, such as a phone and an emulator, name the one you want with the serial from `adb devices`:
 
 ```bash
 ANDROID_SERIAL=<serial> make release
 ```
 
-To run the steps yourself instead of using `make`:
+To run the steps yourself instead of using `make`, which you need to do on Windows:
 
 ```bash
-export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
-./gradlew :app:assembleRelease
-~/Library/Android/sdk/platform-tools/adb -s <serial> install -r app/build/outputs/apk/release/app-release.apk
+./gradlew :app:assembleRelease      # on Windows: gradlew.bat :app:assembleRelease
+adb -s <serial> install -r app/build/outputs/apk/release/app-release.apk
 ```
+
+Gradle has to find the SDK and a JDK. If you've opened the project in Android Studio, it already set that up. Otherwise set `ANDROID_HOME` to the SDK folder and `JAVA_HOME` to the bundled JDK from the table above.
 
 `-r` keeps the app's data and widgets when you install over an older copy. If Google Play Protect warns about an unknown app, choose to install anyway. It hasn't seen this app before because you built it.
 
@@ -174,14 +196,14 @@ Android only installs an update over an existing copy if both are signed with th
 
 The app doesn't run in the background. Android wakes it:
 
-- every 15 minutes or so, when there's a network connection, to re-read WSDOT's page;
+- every 15 minutes to 1 hour, depending on your settings and whether you're on Wi-Fi, to re-read WSDOT's page;
 - with an exact alarm at the next lane change, at midnight, and when the data would go stale, to redraw the widget. The alarm draws the widget itself instead of waiting for a background job, so the widget flips on time even while the phone is idle.
 
 That's a handful of short wake-ups a day. On Android 13 and later the exact alarm permission comes with the app. On Android 12 you can turn it off in settings, and then the widget still updates, just a few minutes late.
 
 ## Development
 
-The Makefile uses Android Studio's bundled JDK and the SDK in `~/Library/Android/sdk`, so you don't need a separate Java install. Override `JAVA_HOME`, `SDK` or `AVD` if yours are elsewhere.
+The Makefile works on macOS and Linux. It uses Android Studio's bundled JDK and SDK from [the places above](#build-it-yourself), so you don't need a separate Java install. Set `JAVA_HOME`, `ANDROID_HOME` or `AVD` if yours are elsewhere. On Windows, run the Gradle tasks from the Makefile with `gradlew.bat`.
 
 | Command | What it does |
 | --- | --- |
@@ -189,11 +211,11 @@ The Makefile uses Android Studio's bundled JDK and the SDK in `~/Library/Android
 | `make build` | Build the debug APK |
 | `make install` | Build and install the debug APK |
 | `make run` | Install the debug APK and open the app |
-| `make release` | Build the shrunk release APK and install it, signed with the release key if this Mac has it |
+| `make release` | Build the shrunk release APK and install it, signed with the release key if it's in this Mac's Keychain, or else the debug key |
 | `make emulator` | Start the emulator named by `AVD` |
 | `make lint` | Run Android lint |
 | `make scenario NAME=holiday` | Show a made-up moment, debug builds only (see below) |
-| `make gallery` | Open the widget size gallery, debug builds only |
+| `make gallery` | Open the widget size gallery, debug builds only. `make gallery MORE=1` adds narrow and in-between sizes, for checking that no text gets cut off |
 | `make screenshots` | Regenerate the images in `docs/` |
 
 The code is split into two modules:
@@ -206,7 +228,7 @@ The code is split into two modules:
 Debug builds can show a made-up moment instead of the live status, using a saved copy of WSDOT's page. That's how the screenshots are made, and how you can check every state without waiting for it:
 
 ```bash
-make scenario NAME=north     # also: south closed weekend closure notice holiday stale checking offline broken
+make scenario NAME=north     # also: evening south closed weekend closure notice holiday stale checking offline broken
 make scenario NAME=live      # back to the real status
 ```
 
@@ -230,7 +252,7 @@ git push origin v1.0.1
 
 The tag sets the version name. The version code is the number of commits, so every release installs over the last one.
 
-The release key is managed by [`scripts/signing.sh`](scripts/signing.sh):
+The release key is managed by [`scripts/signing.sh`](scripts/signing.sh). It keeps the key in the macOS Keychain, so it only works on a Mac. You don't need it to build. Without it, builds use the debug key.
 
 | Command | What it does |
 | --- | --- |

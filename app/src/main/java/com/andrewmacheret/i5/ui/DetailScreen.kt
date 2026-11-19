@@ -9,6 +9,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -41,6 +42,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -52,6 +56,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -83,6 +88,8 @@ import com.andrewmacheret.i5.Lanes
 import com.andrewmacheret.i5.Notifier
 import com.andrewmacheret.i5.Prefs
 import com.andrewmacheret.i5.R
+import com.andrewmacheret.i5.Updates
+import com.andrewmacheret.i5.Work
 import com.andrewmacheret.i5.core.Assessment
 import com.andrewmacheret.i5.core.Concern
 import com.andrewmacheret.i5.core.DataSource
@@ -539,6 +546,8 @@ private fun SettingsSection() {
             }
         }
         Spacer(Modifier.height(12.dp))
+        UpdateSettings(context, prefs)
+        Spacer(Modifier.height(12.dp))
         val manager = AppWidgetManager.getInstance(context)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(painterResource(R.drawable.ic_add), null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -574,6 +583,61 @@ private fun SettingsSection() {
                 TextButton(onClick = {
                     context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).setData("package:${context.packageName}".toUri()))
                 }) { Text("Allow") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun UpdateSettings(context: Context, prefs: Prefs) {
+    var wifi by remember { mutableIntStateOf(prefs.wifiMinutes) }
+    var mobile by remember { mutableIntStateOf(prefs.mobileMinutes) }
+    fun changed() {
+        Work.schedulePeriodic(context)
+        // Picks up the new setting for a check that's waiting for a network
+        Work.refreshSoon(context)
+    }
+    IntervalRow(R.drawable.ic_wifi, "Check WSDOT on Wi-Fi every", Updates.WIFI_CHOICES, wifi) {
+        prefs.wifiMinutes = it
+        wifi = it
+        changed()
+    }
+    Spacer(Modifier.height(12.dp))
+    IntervalRow(R.drawable.ic_cellular, "Check WSDOT on mobile data every", Updates.MOBILE_CHOICES, mobile) {
+        prefs.mobileMinutes = it
+        mobile = it
+        changed()
+    }
+    Text(
+        if (mobile == 0) {
+            "Only when you tap refresh. Away from Wi-Fi, the widget shows ⚠ once the data is 2 hours old."
+        } else {
+            "Up to about ${Updates.monthlyMegabytes(mobile)} MB a month. Opening the app checks at most this often too."
+        },
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 36.dp, top = 4.dp),
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun IntervalRow(@DrawableRes icon: Int, title: String, choices: List<Int>, selected: Int, onPick: (Int) -> Unit) {
+    Row {
+        Icon(painterResource(icon), null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Spacer(Modifier.height(6.dp))
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                choices.forEachIndexed { i, minutes ->
+                    SegmentedButton(
+                        selected = minutes == selected,
+                        onClick = { onPick(minutes) },
+                        shape = SegmentedButtonDefaults.itemShape(i, choices.size),
+                        icon = {},
+                    ) { Text(Updates.label(minutes), maxLines = 1) }
+                }
             }
         }
     }

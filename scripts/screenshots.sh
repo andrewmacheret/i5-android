@@ -7,7 +7,7 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-SDK="${SDK:-$HOME/Library/Android/sdk}"
+SDK="${SDK:-${ANDROID_HOME:-$HOME/Library/Android/sdk}}"
 ADB="${ADB:-$SDK/platform-tools/adb}"
 JAVA_HOME="${JAVA_HOME:-/Applications/Android Studio.app/Contents/jbr/Contents/Home}"
 JAVA="$JAVA_HOME/bin/java"
@@ -84,14 +84,28 @@ app
 shot app-north
 scroll 700
 shot app-north-2
-scroll 300
-scroll 300
+# Slow, so it doesn't fling, and stops with all of Settings in view
+"$ADB" shell input swipe 540 2150 540 260 2000
+sleep 1
 shot app-north-3
 scenario holiday
 app
 shot app-holiday
 stitch "$OUT/app.png" 2 0.4 full "$TMP/app-north.png" "$TMP/app-holiday.png"
 stitch "$OUT/app-more.png" 2 0.4 full "$TMP/app-north-2.png" "$TMP/app-north-3.png"
+
+# Dark mode
+"$ADB" shell cmd uimode night yes > /dev/null
+sleep 2
+scenario evening
+app
+shot dark-app
+"$ADB" shell am force-stop "$PKG"
+"$ADB" shell am start -n "$PKG/.WidgetGalleryActivity" > /dev/null
+sleep 30
+shot dark-gallery
+"$ADB" shell cmd uimode night no > /dev/null
+stitch "$OUT/dark-mode.png" 2 0.4 full "$TMP/dark-app.png" "$TMP/dark-gallery.png"
 
 # Notifications
 "$ADB" shell input keyevent KEYCODE_HOME

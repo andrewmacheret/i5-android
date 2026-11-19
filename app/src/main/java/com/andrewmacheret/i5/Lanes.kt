@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.time.Duration
 import java.time.Instant
 
 /** The one place that holds WSDOT's data and knows when it's being refreshed. */
@@ -85,7 +84,12 @@ object Lanes {
         _refreshing.value = true
         try {
             Sync.run(app)
-            return withContext(Dispatchers.IO) { fetcher.load() }.also { result.value = it }
+            val started = System.nanoTime()
+            return withContext(Dispatchers.IO) { fetcher.load() }.also {
+                result.value = it
+                val ms = (System.nanoTime() - started) / 1_000_000
+                Log.i("I5", "read WSDOT's page in $ms ms: ${it.source::class.simpleName}, ${it.info.events.size} events, error=${it.error}")
+            }
         } finally {
             _refreshing.value = false
             // Always redraw, so "Checking…" can't stay on the widget
@@ -93,13 +97,11 @@ object Lanes {
         }
     }
 
-    /** For the app screen, which shows any error itself. Skips data newer than `ifOlderThan`. */
-    fun refreshInBackground(ifOlderThan: Duration? = null) {
+    /** For the app screen, which shows any error itself. When opening the app, follows the update settings. */
+    fun refreshInBackground(opening: Boolean = false) {
         scope.launch {
             try {
-                val fetched = load().source.fetchedAt
-                val fresh = ifOlderThan != null && fetched != null && Duration.between(fetched, Instant.now()) in Duration.ZERO..ifOlderThan
-                if (!fresh) refresh()
+                if (!opening || Updates.dueOnOpen(app, load().source.fetchedAt)) refresh()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

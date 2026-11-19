@@ -15,6 +15,16 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("notify", false)
         set(v) = sp.edit { putBoolean("notify", v) }
 
+    /** Minutes between checks on Wi-Fi */
+    var wifiMinutes: Int
+        get() = sp.getInt("wifiMinutes", 15)
+        set(v) = sp.edit { putInt("wifiMinutes", v) }
+
+    /** Minutes between checks on mobile data, or 0 for only when asked */
+    var mobileMinutes: Int
+        get() = sp.getInt("mobileMinutes", 60)
+        set(v) = sp.edit { putInt("mobileMinutes", v) }
+
     /** What the last sync saw, so the next one can tell what changed */
     var seen: Alerts.Seen?
         get() {

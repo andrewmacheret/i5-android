@@ -52,6 +52,7 @@ import com.andrewmacheret.i5.Work
 import com.andrewmacheret.i5.core.Assessment
 import com.andrewmacheret.i5.core.DataSource
 import com.andrewmacheret.i5.core.Format
+import com.andrewmacheret.i5.core.LaneStatus
 import com.andrewmacheret.i5.core.Seattle
 import com.andrewmacheret.i5.core.Snapshot
 import com.andrewmacheret.i5.ui.MainActivity
@@ -80,13 +81,13 @@ class LanesWidgetReceiver : GlanceAppWidgetReceiver() {
     override fun onEnabled(context: Context) {
         super.onEnabled(context)
         // First widget placed. Get fresh data and set the next wake up.
-        Work.refreshSoon(context)
+        Work.refreshNow(context)
     }
 }
 
 class RefreshAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        Work.refreshSoon(context)
+        Work.refreshNow(context)
     }
 }
 
@@ -116,15 +117,22 @@ private fun WidgetContent(snap: Snapshot) {
 /** One cell: just the badge, with the next change time if there's room */
 @Composable
 private fun Tiny(snap: Snapshot, width: Dp, height: Dp) {
-    val showTime = height >= 80.dp && snap.check.verdict == Assessment.Verdict.CONFIDENT && snap.next != null
-    val badge = minOf(width - 12.dp, height - (if (showTime) 34.dp else 16.dp)).coerceIn(24.dp, 72.dp)
+    val next = snap.next?.takeIf { height >= 80.dp && snap.check.verdict == Assessment.Verdict.CONFIDENT }
+    // Smaller or shorter if needed, and no time at all rather than a cut off one
+    val context = LocalContext.current
+    val time = next?.let {
+        val clock = Format.clock(it.at)
+        listOf("until $clock" to 11f, "until $clock" to 10f, clock to 11f, clock to 10f).firstNotNullOfOrNull { (text, sp) ->
+            TextFit.first(context, listOf(text), sp, width - 12.dp)?.let { fit -> fit to sp }
+        }
+    }
+    val badge = minOf(width - 12.dp, height - (if (time != null) 34.dp else 16.dp)).coerceIn(24.dp, 72.dp)
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalAlignment = Alignment.CenterVertically) {
         Badge(snap, badge)
-        if (showTime) {
-            val next = snap.next!!
+        if (time != null) {
             Text(
-                "until ${Format.clock(next.at)}",
-                style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp),
+                time.first,
+                style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = time.second.sp),
                 maxLines = 1,
                 modifier = GlanceModifier.padding(top = 4.dp),
             )
@@ -137,16 +145,19 @@ private fun Tiny(snap: Snapshot, width: Dp, height: Dp) {
 private fun Compact(snap: Snapshot, width: Dp, height: Dp) {
     val showBar = height >= 96.dp
     val narrow = width < 230.dp
+    val lines = if (showBar && !narrow) 1 else 2
+    val badge = if (narrow) 34.dp else 40.dp
+    val gap = if (narrow) 10.dp else 12.dp
     Column(modifier = GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Badge(snap, if (narrow) 34.dp else 40.dp)
-            Spacer(GlanceModifier.width(if (narrow) 10.dp else 12.dp))
+            Badge(snap, badge)
+            Spacer(GlanceModifier.width(gap))
             Column(modifier = GlanceModifier.defaultWeight()) {
-                Title(snap, if (narrow) 16 else 18)
+                Title(snap, if (narrow) 16 else 18, width - 28.dp - badge - gap)
                 Text(
-                    if (narrow) shortDetail(snap) else detail(snap),
+                    fittedDetail(snap, 13f, width - 28.dp - badge - gap, lines),
                     style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 13.sp),
-                    maxLines = if (showBar && !narrow) 1 else 2,
+                    maxLines = lines,
                 )
             }
         }
@@ -179,25 +190,34 @@ private fun Timeline(snap: Snapshot, width: Dp, height: Dp) {
 /** The full card: status, today's timeline and where the data came from */
 @Composable
 private fun Full(snap: Snapshot, width: Dp, height: Dp) {
+    val context = LocalContext.current
+    val textWidth = width - 88.dp
+    val detail = fittedDetail(snap, 13f, textWidth, 2)
+    val oneLine = TextFit.first(context, listOf(detail), 13f, textWidth) != null
     Column(modifier = GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Badge(snap, 48.dp)
             Spacer(GlanceModifier.width(12.dp))
             Column {
+                val captions = captions(snap)
                 Text(
-                    caption(snap),
+                    TextFit.first(context, captions, 11f, textWidth) ?: captions.last(),
                     style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp, fontWeight = FontWeight.Medium),
                     maxLines = 1,
                 )
-                Title(snap, 21)
-                Subtitle(snap, maxLines = 2)
+                Title(snap, 21, textWidth)
+                Text(
+                    detail,
+                    style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 13.sp),
+                    maxLines = 2,
+                )
             }
         }
-        // Fill spare height with what comes after the next change
-        val rows = ((height - 160.dp) / 18.dp).toInt().coerceIn(0, 3)
+        // Fill spare height with what comes after the next change, after room for a second line of detail
+        val rows = ((height - 160.dp - (if (oneLine) 0.dp else 17.dp)) / 18.dp).toInt().coerceIn(0, 3)
         if (rows > 0) {
             Spacer(GlanceModifier.height(6.dp))
-            ExtraRows(snap, rows)
+            ExtraRows(snap, rows, width - 28.dp)
         }
         Spacer(GlanceModifier.defaultWeight())
         Timeline(snap, width - 28.dp, 18.dp)
@@ -209,8 +229,9 @@ private fun Full(snap: Snapshot, width: Dp, height: Dp) {
         }
         Spacer(GlanceModifier.height(2.dp))
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            val sources = sourceTexts(snap)
             Text(
-                sourceText(snap),
+                TextFit.first(context, sources, 11f, width - 56.dp) ?: TextFit.keepTimesTogether(sources.last()),
                 style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp),
                 maxLines = 1,
                 modifier = GlanceModifier.defaultWeight(),
@@ -227,20 +248,26 @@ private fun Full(snap: Snapshot, width: Dp, height: Dp) {
 
 /** Later changes when confirmed. Otherwise the posted schedule and any other concerns. */
 @Composable
-private fun ExtraRows(snap: Snapshot, rows: Int) {
+private fun ExtraRows(snap: Snapshot, rows: Int, width: Dp) {
+    val context = LocalContext.current
     val small = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 12.sp)
     if (snap.check.verdict == Assessment.Verdict.UNCERTAIN) {
-        val lines = listOf("Posted schedule: ${snap.check.scheduled.title.lowercase()}, not confirmed") +
-            snap.check.concerns.drop(1).map { "⚠ ${it.title}" }
+        val posted = snap.check.scheduled.title.lowercase()
+        val first = TextFit.first(context, listOf("Posted schedule: $posted, not confirmed", "Posted: $posted"), 12f, width)
+        val lines = listOfNotNull(first) + snap.check.concerns.drop(1).map { "⚠ ${it.title}" }
         for (line in lines.take(rows)) Text(line, style = small, maxLines = 1)
         return
     }
     if (snap.check.verdict != Assessment.Verdict.CONFIDENT) return
     for (c in snap.changes.drop(1).take(rows)) {
+        // Shorter words before a cut off time. The spaces stand in for the gap between the two.
+        val time = Format.whenText(c.at, snap.now)
+        val (status, at) = listOf(c.to.title to time, short(c.to) to time, short(c.to) to Format.clock(c.at))
+            .firstOrNull { (s, t) -> TextFit.first(context, listOf("●  $s    $t"), 12f, width) != null } ?: return
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("● ", style = TextStyle(color = colors(LaneColors.badge(c.to)), fontSize = 12.sp))
-            Text(c.to.title, style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 12.sp), modifier = GlanceModifier.defaultWeight())
-            Text(Format.whenText(c.at, snap.now), style = small, maxLines = 1)
+            Text(status, style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 12.sp), maxLines = 1, modifier = GlanceModifier.defaultWeight())
+            Text(TextFit.keepTimesTogether(at), style = small, maxLines = 1)
         }
     }
 }
@@ -256,22 +283,19 @@ private fun Badge(snap: Snapshot, size: Dp) {
 }
 
 @Composable
-private fun Title(snap: Snapshot, sizeSp: Int) {
+private fun Title(snap: Snapshot, sizeSp: Int, width: Dp) {
     val color = when (snap.check.verdict) {
         Assessment.Verdict.CONFIDENT -> colors(LaneColors.text(snap.check.scheduled, false), LaneColors.text(snap.check.scheduled, true))
         Assessment.Verdict.CHECKING -> GlanceTheme.colors.onSurface
         Assessment.Verdict.UNCERTAIN -> colors(LaneColors.warningText(false), LaneColors.warningText(true))
     }
-    Text(headline(snap), style = TextStyle(color = color, fontSize = sizeSp.sp, fontWeight = FontWeight.Bold), maxLines = 1)
-}
-
-@Composable
-private fun Subtitle(snap: Snapshot, maxLines: Int) {
-    Text(
-        detail(snap),
-        style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 13.sp),
-        maxLines = maxLines,
-    )
+    // A bit smaller, then the short word, so "Northbound" never shows as "Northbo…"
+    val context = LocalContext.current
+    val full = headline(snap)
+    val short = shortHeadline(snap)
+    val (text, sp) = listOf(full to sizeSp, full to sizeSp - 2, short to sizeSp - 2, short to sizeSp - 4)
+        .firstOrNull { (t, sp) -> TextFit.first(context, listOf(t), sp.toFloat(), width, bold = true) != null } ?: (short to sizeSp - 4)
+    Text(text, style = TextStyle(color = color, fontSize = sp.sp, fontWeight = FontWeight.Bold), maxLines = 1)
 }
 
 private fun headline(snap: Snapshot) = when (snap.check.verdict) {
@@ -280,31 +304,51 @@ private fun headline(snap: Snapshot) = when (snap.check.verdict) {
     Assessment.Verdict.UNCERTAIN -> "Can't confirm"
 }
 
+private fun shortHeadline(snap: Snapshot) = when (snap.check.verdict) {
+    Assessment.Verdict.CONFIDENT -> short(snap.check.scheduled)
+    Assessment.Verdict.CHECKING -> "Checking"
+    Assessment.Verdict.UNCERTAIN -> "Unsure"
+}
+
+private fun short(status: LaneStatus) = when (status) {
+    LaneStatus.NORTHBOUND -> "North"
+    LaneStatus.SOUTHBOUND -> "South"
+    else -> status.title
+}
+
 private fun detail(snap: Snapshot) = when (snap.check.verdict) {
     Assessment.Verdict.CONFIDENT -> snap.nextText
     Assessment.Verdict.CHECKING -> "Reading WSDOT's schedule"
     Assessment.Verdict.UNCERTAIN -> snap.check.concerns.firstOrNull()?.title ?: "Tap for details"
 }
 
-/** For narrow widgets: "until 9:00 PM" */
-private fun shortDetail(snap: Snapshot): String {
-    if (snap.check.verdict != Assessment.Verdict.CONFIDENT) return detail(snap)
-    val next = snap.next ?: return "All week"
-    return "until ${Format.whenText(next.at, snap.now)}"
+/** "Closes at 11:00 PM" if it fits, down to "until 11:00 PM", but never a cut off time */
+@Composable
+private fun fittedDetail(snap: Snapshot, sp: Float, width: Dp, lines: Int): String {
+    val next = snap.next
+    if (snap.check.verdict != Assessment.Verdict.CONFIDENT || next == null) return detail(snap)
+    val options = listOf(
+        snap.nextText,
+        "until ${Format.whenText(next.at, snap.now)}",
+        "until ${Format.clock(next.at)}",
+        Format.clock(next.at),
+    )
+    return TextFit.first(LocalContext.current, options, sp, width, lines) ?: TextFit.keepTimesTogether(options.last())
 }
 
-/** Mentions Seattle time when the phone is set to another time zone */
-private fun caption(snap: Snapshot): String {
+/** Mentions Seattle time when the phone is set to another time zone. Longest first. */
+private fun captions(snap: Snapshot): List<String> {
     val here = ZoneId.systemDefault().rules.getOffset(snap.now)
     val there = Seattle.zone.rules.getOffset(snap.now)
-    return if (here == there) "I-5 EXPRESS LANES" else "I-5 EXPRESS · SEATTLE TIME"
+    return if (here == there) listOf("I-5 EXPRESS LANES", "I-5 EXPRESS") else listOf("I-5 EXPRESS · SEATTLE TIME", "SEATTLE TIME")
 }
 
-private fun sourceText(snap: Snapshot): String {
-    if (snap.check.verdict == Assessment.Verdict.CHECKING) return "Checking WSDOT…"
+/** Longest first, for when the widget is narrow */
+private fun sourceTexts(snap: Snapshot): List<String> {
+    if (snap.check.verdict == Assessment.Verdict.CHECKING) return listOf("Checking WSDOT…")
     return when (val s = snap.result.source) {
-        is DataSource.Live -> "Checked WSDOT ${Format.whenText(s.at, snap.now)}"
-        is DataSource.Cached -> "Saved copy from ${Format.whenText(s.at, snap.now)}"
-        DataSource.BuiltIn -> "Built-in schedule only"
+        is DataSource.Live -> Format.whenText(s.at, snap.now).let { listOf("Checked WSDOT $it", "Checked $it", it) }
+        is DataSource.Cached -> Format.whenText(s.at, snap.now).let { listOf("Saved copy from $it", "Saved $it", it) }
+        DataSource.BuiltIn -> listOf("Built-in schedule only")
     }
 }

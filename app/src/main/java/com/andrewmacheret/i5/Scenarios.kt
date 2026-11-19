@@ -18,7 +18,7 @@ import java.time.LocalDate
 object Scenarios {
     data class Scenario(val now: Instant, val result: FetchResult, val refreshing: Boolean = false)
 
-    val names = listOf("north", "south", "closed", "weekend", "closure", "notice", "holiday", "stale", "checking", "offline", "broken")
+    val names = listOf("north", "evening", "south", "closed", "weekend", "closure", "notice", "holiday", "stale", "checking", "offline", "broken")
 
     private var cached: Pair<String, Scenario?>? = null
 
@@ -39,6 +39,8 @@ object Scenarios {
 
         return when (name) {
             "north" -> live(at(2026, 11, 18, 16, 55))
+            // A regular weekday, so the widget shows the widest time, 11:00 PM
+            "evening" -> live(at(2026, 11, 19, 16, 55))
             "south" -> live(at(2026, 11, 20, 7, 30))
             "closed" -> live(at(2026, 11, 18, 23, 20))
             "weekend" -> live(at(2026, 11, 21, 14, 30))

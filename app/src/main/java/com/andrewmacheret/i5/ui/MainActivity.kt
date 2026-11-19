@@ -5,7 +5,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.andrewmacheret.i5.Lanes
-import java.time.Duration
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,6 +20,6 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         // Opening the app is a good moment to check WSDOT, unless it just did
-        Lanes.refreshInBackground(ifOlderThan = Duration.ofMinutes(2))
+        Lanes.refreshInBackground(opening = true)
     }
 }
