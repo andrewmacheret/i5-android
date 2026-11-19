@@ -19,8 +19,9 @@ build:
 install: build
 	$(ADB) install -r $(DEBUG_APK)
 
+# Signs with the release key from the Keychain if there is one, see scripts/signing.sh
 release:
-	./gradlew :app:assembleRelease
+	scripts/signing.sh run ./gradlew :app:assembleRelease
 	$(ADB) install -r $(RELEASE_APK)
 
 run: install

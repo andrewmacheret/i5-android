@@ -106,7 +106,23 @@ It can't know about a closure WSDOT hasn't posted yet, like an emergency repair 
 
 ## Install
 
-There's no Play Store listing. You build it yourself with [Android Studio](https://developer.android.com/studio), which brings the SDK, a JDK and `adb`. The app needs Android 8.0 or later.
+There's no Play Store listing. Download the APK from [Releases](https://github.com/andrewmacheret/i5-android/releases), or build it yourself. The app needs Android 8.0 or later.
+
+### Download the APK
+
+**On the phone:** open the [latest release](https://github.com/andrewmacheret/i5-android/releases/latest) in the phone's browser and tap the `.apk` file. Android asks you to allow installs from your browser the first time. Then tap **Install**.
+
+**From a computer with `adb`:** download the `.apk` from the latest release, get your phone ready (step 1 below), then run:
+
+```bash
+adb install -r i5-express-v1.0.0.apk
+```
+
+Use the file name of the version you downloaded. Then [add the widget](#3-add-the-widget).
+
+### Build it yourself
+
+You need [Android Studio](https://developer.android.com/studio), which brings the SDK, a JDK and `adb`.
 
 ### 1. Get your phone ready
 
@@ -150,7 +166,9 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 
 Long press your home screen, tap **Widgets**, and drag **I-5 Express** onto it. Or open the app and tap **Add** in settings. Turn on **Notify when lanes change** in the app if you want alerts.
 
-The release build is signed with your local debug key, so it's for your own devices only. To remove it, run `adb uninstall com.andrewmacheret.i5`, or uninstall it like any other app.
+To remove the app, uninstall it like any other app, or run `adb uninstall com.andrewmacheret.i5`.
+
+Android only installs an update over an existing copy if both are signed with the same key. The APKs on the Releases page share one key. A copy you build yourself is signed with your own debug key, so to switch between the two you have to uninstall first, which clears the app's settings.
 
 ### Battery and alarms
 
@@ -171,7 +189,7 @@ The Makefile uses Android Studio's bundled JDK and the SDK in `~/Library/Android
 | `make build` | Build the debug APK |
 | `make install` | Build and install the debug APK |
 | `make run` | Install the debug APK and open the app |
-| `make release` | Build the shrunk release APK and install it |
+| `make release` | Build the shrunk release APK and install it, signed with the release key if this Mac has it |
 | `make emulator` | Start the emulator named by `AVD` |
 | `make lint` | Run Android lint |
 | `make scenario NAME=holiday` | Show a made-up moment, debug builds only (see below) |
@@ -200,6 +218,28 @@ adb shell am broadcast -n com.andrewmacheret.i5/.DebugReceiver --ez tick true
 ```
 
 None of this is in release builds.
+
+### Releases
+
+GitHub Actions ([`build.yml`](.github/workflows/build.yml)) runs the tests and a debug build on every push. Pushing a version tag also builds the signed release APK and publishes it on the [Releases](https://github.com/andrewmacheret/i5-android/releases) page:
+
+```bash
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+The tag sets the version name. The version code is the number of commits, so every release installs over the last one.
+
+The release key is managed by [`scripts/signing.sh`](scripts/signing.sh):
+
+| Command | What it does |
+| --- | --- |
+| `scripts/signing.sh create` | Make the key, once ever, and back up the key file and its password in the macOS Keychain |
+| `scripts/signing.sh github` | Copy both into the repo's GitHub Actions secrets, `I5_KEYSTORE_BASE64` and `I5_KEYSTORE_PASSWORD` |
+| `scripts/signing.sh restore` | Write the key file back out from the Keychain, to `~/.android/i5-android-release.jks` |
+| `scripts/signing.sh run <command>` | Run a build with the key, which is what `make release` does |
+
+The Keychain holds the only copy you can read back, since GitHub secrets are write-only. Don't delete the `i5-android-release-keystore` and `i5-android-release-password` items. Without them, the next release can't update phones that already have the app. The password only travels through environment variables and stdin, never on a command line.
 
 ## Built with LLM tools
 
