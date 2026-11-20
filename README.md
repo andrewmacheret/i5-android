@@ -90,7 +90,8 @@ It asks for notification permission when you turn this on, and shows a link to A
 - **Check WSDOT on mobile data every** 15 minutes, 30 minutes, 1 hour (the default), or **Off**. Each check uses about 45 KB, so 1 hour is at most about 32 MB a month and 15 minutes about 130 MB. On mobile data, opening the app also waits for this setting. With **Off**, the app only uses mobile data when you tap refresh or add a widget. Away from Wi-Fi, the widget then shows ⚠ once the data is 2 hours old, and the app checks again when you're back on Wi-Fi.
 - Wi-Fi here means any network Android doesn't treat as metered. A phone hotspot counts as mobile data. Tapping refresh always checks, on any network.
 - **Home screen widget:** an **Add** button that puts the widget on your home screen, on launchers that support it.
-- If Android turned off exact alarms for the app, a note explains that the widget may update a few minutes late, with a button to allow them.
+- If exact alarms are off, a note explains that the widget may update up to 10 minutes late, with an **Allow** button. They start off on Android 14 and later. See [Battery and alarms](#battery-and-alarms).
+- At the bottom: a link to the [privacy policy](PRIVACY.md).
 
 ## When to trust it
 
@@ -199,7 +200,9 @@ The app doesn't run in the background. Android wakes it:
 - every 15 minutes to 1 hour, depending on your settings and whether you're on Wi-Fi, to re-read WSDOT's page;
 - with an exact alarm at the next lane change, at midnight, and when the data would go stale, to redraw the widget. The alarm draws the widget itself instead of waiting for a background job, so the widget flips on time even while the phone is idle.
 
-That's a handful of short wake-ups a day. On Android 13 and later the exact alarm permission comes with the app. On Android 12 you can turn it off in settings, and then the widget still updates, just a few minutes late.
+That's a handful of short wake-ups a day.
+
+Exact alarms need the **Alarms & reminders** permission. On Android 14 and later it starts off, and you turn it on with **Allow** in the app's settings. Without it the widget still updates, up to 10 minutes after each change while the phone is awake, or when you next wake the phone. The app asks for this permission instead of the automatic one because Google Play only allows that for alarm clock and calendar apps.
 
 ## Development
 
@@ -212,6 +215,7 @@ The Makefile works on macOS and Linux. It uses Android Studio's bundled JDK and 
 | `make install` | Build and install the debug APK |
 | `make run` | Install the debug APK and open the app |
 | `make release` | Build the shrunk release APK and install it, signed with the release key if it's in this Mac's Keychain, or else the debug key |
+| `make bundle` | Build the signed app bundle (`.aab`) that Google Play wants |
 | `make emulator` | Start the emulator named by `AVD` |
 | `make lint` | Run Android lint |
 | `make scenario NAME=holiday` | Show a made-up moment, debug builds only (see below) |
@@ -243,7 +247,7 @@ None of this is in release builds.
 
 ### Releases
 
-GitHub Actions ([`build.yml`](.github/workflows/build.yml)) runs the tests and a debug build on every push. Pushing a version tag also builds the signed release APK and publishes it on the [Releases](https://github.com/andrewmacheret/i5-android/releases) page:
+GitHub Actions ([`build.yml`](.github/workflows/build.yml)) runs the tests and a debug build on every push. Pushing a version tag also builds the signed release APK and publishes it on the [Releases](https://github.com/andrewmacheret/i5-android/releases) page. It also saves the signed app bundle for Google Play as a download on that run (**Artifacts**, kept 90 days):
 
 ```bash
 git tag v1.0.1
@@ -262,6 +266,14 @@ The release key is managed by [`scripts/signing.sh`](scripts/signing.sh). It kee
 | `scripts/signing.sh run <command>` | Run a build with the key, which is what `make release` does |
 
 The Keychain holds the only copy you can read back, since GitHub secrets are write-only. Don't delete the `i5-android-release-keystore` and `i5-android-release-password` items. Without them, the next release can't update phones that already have the app. The password only travels through environment variables and stdin, never on a command line.
+
+### Google Play
+
+The app isn't on Google Play yet, but it's ready to upload. When you set up Play App Signing, choose to use your existing key and upload this one, rather than letting Google make a new key. Then copies from Google Play and from the Releases page share a signature, and each can update the other. The privacy policy URL for the listing is <https://github.com/andrewmacheret/i5-android/blob/main/PRIVACY.md>.
+
+## Privacy
+
+The app collects nothing. It only talks to WSDOT, and everything it saves stays on your phone. See the [privacy policy](PRIVACY.md).
 
 ## Built with LLM tools
 

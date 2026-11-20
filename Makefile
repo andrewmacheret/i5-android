@@ -23,7 +23,7 @@ AVD ?= Medium_Phone_API_37.0
 DEBUG_APK = app/build/outputs/apk/debug/app-debug.apk
 RELEASE_APK = app/build/outputs/apk/release/app-release.apk
 
-.PHONY: test build install release run emulator screenshots scenario gallery lint clean
+.PHONY: test build install release bundle run emulator screenshots scenario gallery lint clean
 
 test:
 	./gradlew :core:test
@@ -38,6 +38,11 @@ install: build
 release:
 	scripts/signing.sh run ./gradlew :app:assembleRelease
 	$(ADB) install -r $(RELEASE_APK)
+
+# The app bundle Google Play wants, signed like release
+bundle:
+	scripts/signing.sh run ./gradlew :app:bundleRelease
+	@echo "Wrote app/build/outputs/bundle/release/app-release.aab"
 
 run: install
 	$(ADB) shell am start -n com.andrewmacheret.i5/.ui.MainActivity

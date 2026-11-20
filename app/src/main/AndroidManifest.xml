@@ -4,11 +4,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- Wakes the widget right when the lanes change. Falls back to inexact alarms without it. -->
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-    <uses-permission
-        android:name="android.permission.SCHEDULE_EXACT_ALARM"
-        android:maxSdkVersion="32" />
+    <!--
+      Wakes the widget right when the lanes change. The user grants it in settings on Android 14 and up.
+      Not USE_EXACT_ALARM, which Google Play only allows for alarm clock and calendar apps.
+    -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
         android:name=".I5App"

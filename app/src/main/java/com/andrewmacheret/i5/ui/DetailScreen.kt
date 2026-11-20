@@ -575,7 +575,7 @@ private fun SettingsSection() {
             Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "Exact alarms are off, so the widget may update a few minutes after the lanes change.",
+                    "Exact alarms are off, so the widget may update up to 10 minutes after the lanes change.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
@@ -729,6 +729,10 @@ private fun Footer(s: Snapshot) {
         }
         s.result.error?.let {
             Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, maxLines = 2)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Not affiliated with WSDOT.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            LinkButton("Privacy policy", Sources.PRIVACY)
         }
     }
 }

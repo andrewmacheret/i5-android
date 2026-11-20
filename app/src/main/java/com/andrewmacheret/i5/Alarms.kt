@@ -22,27 +22,35 @@ object Alarms {
         return candidates.filter { it.isAfter(snap.now) }.minOrNull()
     }
 
+    /** Android's shortest window for an alarm that isn't exact */
+    private const val WINDOW_MS = 10 * 60 * 1000L
+
     fun scheduleNext(context: Context, snap: Snapshot) {
         val at = nextWake(snap) ?: return
         val am = context.getSystemService(AlarmManager::class.java) ?: return
-        val pi = PendingIntent.getBroadcast(
-            context, 0,
-            Intent(context, TickReceiver::class.java),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
         // A second late so the new minute has started
         val ms = at.toEpochMilli() + 1_000
-        val exact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
-        try {
-            if (exact) {
-                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi)
-            } else {
-                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi)
+        if (exactAllowed(context)) {
+            try {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, tick(context, 0))
+                am.cancel(tick(context, 1))
+                return
+            } catch (_: SecurityException) {
+                // Permission taken away just now, so fall through
             }
-        } catch (_: SecurityException) {
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi)
         }
+        // A plain alarm can come up to an hour late.
+        // The window keeps it within 10 minutes while the phone is awake.
+        // The second alarm still gets through when the phone is idle.
+        am.setWindow(AlarmManager.RTC_WAKEUP, ms, WINDOW_MS, tick(context, 0))
+        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, tick(context, 1))
     }
+
+    private fun tick(context: Context, id: Int) = PendingIntent.getBroadcast(
+        context, id,
+        Intent(context, TickReceiver::class.java),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
 
     fun exactAllowed(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true

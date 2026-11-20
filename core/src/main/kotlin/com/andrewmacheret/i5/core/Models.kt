@@ -109,4 +109,5 @@ object Sources {
     const val REVIVE_I5 = "https://wsdot.wa.gov/construction-planning/search-projects/revive-i-5-preserving-vital-freeway"
     const val TRAVEL_MAP = "https://wsdot.com/travel/real-time/map/"
     const val WSDOT_TRAFFIC_X = "https://x.com/wsdot_traffic"
+    const val PRIVACY = "https://github.com/andrewmacheret/i5-android/blob/main/PRIVACY.md"
 }
