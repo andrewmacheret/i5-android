@@ -2,6 +2,8 @@
 
 # I-5 Express for Android
 
+[![Build](https://github.com/andrewmacheret/i5-android/actions/workflows/build.yml/badge.svg)](https://github.com/andrewmacheret/i5-android/actions/workflows/build.yml)
+
 A home screen widget that shows which way Seattle's I-5 express lanes are running right now, and whether they're open at all. Tap it for the details.
 
 <img src="docs/home.png" width="300" alt="An Android home screen with the I-5 Express widget showing Northbound, closes at 9:00 PM, with a timeline for today">
