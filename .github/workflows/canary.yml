@@ -1,0 +1,30 @@
+name: Canary
+
+# Started once a day by github.com/andrewmacheret/canary
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wsdot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      # WSDOT's site sometimes times out once, so try again before failing
+      - name: Read WSDOT's page
+        env:
+          I5_LIVE: "1"
+        run: |
+          ./gradlew :core:test --tests '*LivePageTest' --console=plain ||
+            (sleep 30 && ./gradlew :core:test --tests '*LivePageTest' --rerun --console=plain)

@@ -2,7 +2,7 @@
 
 # I-5 Express for Android
 
-[![Build](https://github.com/andrewmacheret/i5-android/actions/workflows/build.yml/badge.svg)](https://github.com/andrewmacheret/i5-android/actions/workflows/build.yml) [![License](https://img.shields.io/badge/license-MIT-lightgray.svg)](https://github.com/andrewmacheret/i5-android/blob/main/LICENSE)
+[![Build](https://github.com/andrewmacheret/i5-android/actions/workflows/build.yml/badge.svg)](https://github.com/andrewmacheret/i5-android/actions/workflows/build.yml) [![Canary](https://github.com/andrewmacheret/i5-android/actions/workflows/canary.yml/badge.svg)](https://github.com/andrewmacheret/i5-android/actions/workflows/canary.yml) [![License](https://img.shields.io/badge/license-MIT-lightgray.svg)](https://github.com/andrewmacheret/i5-android/blob/main/LICENSE)
 
 A home screen widget that shows which way Seattle's I-5 express lanes are running right now, and whether they're open at all. Tap it for the details.
 
@@ -276,6 +276,10 @@ The app isn't on Google Play yet, but it's ready to upload. When you set up Play
 ## Privacy
 
 The app collects nothing. It only talks to WSDOT, and everything it saves stays on your phone. See the [privacy policy](PRIVACY.md).
+
+## Health check
+
+The Canary workflow (`.github/workflows/canary.yml`) runs `LivePageTest` once a day with `I5_LIVE=1`. It reads WSDOT's real page, so it fails when WSDOT changes the page in a way the parser can't read. Normal test runs skip it. It's started by [andrewmacheret/canary](https://github.com/andrewmacheret/canary).
 
 ## Built with LLM tools
 
