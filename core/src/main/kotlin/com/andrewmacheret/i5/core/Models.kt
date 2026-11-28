@@ -1,7 +1,9 @@
 package com.andrewmacheret.i5.core
 
 import java.time.Instant
-import java.time.LocalDate
+
+// What the server publishes at GET /status, and the app draws.
+// Ported from src/core in i5-server-lambdas, which is the source of truth. Keep them in step.
 
 enum class LaneStatus(val title: String, val letter: String) {
     NORTHBOUND("Northbound", "N"),
@@ -10,6 +12,15 @@ enum class LaneStatus(val title: String, val letter: String) {
     UNKNOWN("Unknown", "?");
 
     val isOpen: Boolean get() = this == NORTHBOUND || this == SOUTHBOUND
+
+    companion object {
+        fun of(name: String?): LaneStatus = when (name) {
+            "northbound" -> NORTHBOUND
+            "southbound" -> SOUTHBOUND
+            "closed" -> CLOSED
+            else -> UNKNOWN
+        }
+    }
 }
 
 /** Minutes since midnight, 0..1440. Use `TimeOfDay.of(hour, minute)` for clock times. */
@@ -44,7 +55,7 @@ data class LaneWindow(val status: LaneStatus, val start: TimeOfDay, val end: Tim
 
 data class WeeklySchedule(val weekday: List<LaneWindow>, val weekend: List<LaneWindow>) {
     companion object {
-        /** The schedule WSDOT posted as of Nov 2026. Used when the page can't be read. */
+        /** The schedule WSDOT posted as of Nov 2026. Used when the page lists none. */
         val BUILT_IN = WeeklySchedule(
             weekday = listOf(
                 LaneWindow(LaneStatus.SOUTHBOUND, TimeOfDay.of(5), TimeOfDay.of(11)),
@@ -58,56 +69,138 @@ data class WeeklySchedule(val weekday: List<LaneWindow>, val weekend: List<LaneW
     }
 }
 
-/** A full closure over a date range, like a weekend-long closure. */
-data class Closure(val title: String, val start: Instant, val end: Instant)
+/** A stretch of time with one status. Published segments cover the horizon with no gaps. */
+data class Segment(val start: Instant, val end: Instant, val status: LaneStatus)
 
-/** The days something applies to. `last == null` means it has no end date. */
-data class DayRange(val first: LocalDate, val last: LocalDate?) {
-    fun contains(day: LocalDate) = !day.isBefore(first) && (last == null || !day.isAfter(last))
-    fun isOverBefore(today: LocalDate) = last != null && last.isBefore(today)
-}
+/** A run of one status across part of a Seattle day, in wall clock minutes */
+data class DaySegment(val start: TimeOfDay, val end: TimeOfDay, val status: LaneStatus)
 
-data class SpecialEvent(
+/** A stretch of time the server can't vouch for, with the reason */
+data class Doubt(
+    val start: Instant,
+    val end: Instant,
     val title: String,
     val detail: String,
     val link: String?,
-    /** Days the event mentions. Null when it has no dates we could read. */
-    val days: DayRange? = null,
-    /** Set when we could read exact start and end times for a full closure. */
-    val closure: Closure? = null,
+    /** "page", "alert", "holiday" or "models" */
+    val source: String,
+    /** True while a new page or alert is still being read, which usually clears up within minutes */
+    val checking: Boolean = false,
 )
 
-data class Advisory(val text: String, val link: String?, val days: DayRange?) {
-    /** True when the notice only talks about days that are already over. */
-    fun isOverBefore(today: LocalDate) = days?.isOverBefore(today) ?: false
-}
+/** Null start or end means the notice didn't give one */
+data class NoticeSpan(val start: Instant?, val end: Instant?)
 
-/** `time` is null when the page didn't say what time. */
-data class EarlyClose(val day: LocalDate, val time: TimeOfDay?)
+/** One notice from the page or an alert, for the lists */
+data class Notice(
+    val title: String,
+    /** The page's own words */
+    val detail: String,
+    val link: String?,
+    /** "northbound", "southbound", "closed", "weekday_schedule", "weekend_schedule", "other" or "unclear" */
+    val kind: String,
+    val spans: List<NoticeSpan>,
+    /** "exact", "approximate" or "unknown" */
+    val startCertainty: String,
+    val endCertainty: String,
+    /** "page" or "alert" */
+    val source: String,
+)
 
-data class ExpressLanesInfo(
-    val schedule: WeeklySchedule = WeeklySchedule.BUILT_IN,
-    /** False when the page's schedule couldn't be read and the built-in one is used. */
-    val scheduleFromPage: Boolean = false,
-    val earlyCloses: List<EarlyClose> = emptyList(),
-    val events: List<SpecialEvent> = emptyList(),
-    val advisories: List<Advisory> = emptyList(),
-    /** Bits of the page that looked important but couldn't be read */
-    val warnings: List<String> = emptyList(),
+/** A page version or alert the server has read */
+data class DocumentInfo(
+    val kind: String,
+    val hash: String,
+    /** When the server first saw this version */
+    val firstSeen: Instant?,
+    /** Models whose answers were used, or "reviewed" for an answer a person wrote */
+    val models: List<String>,
+    /** "answered", "pending" or "failed" */
+    val status: String,
+    val link: String?,
+)
+
+data class Horizon(val start: Instant, val end: Instant)
+
+/** What the server worked out from WSDOT's page and alerts */
+data class Published(
+    val publishedAt: Instant,
+    /** Segments cover exactly this range */
+    val horizon: Horizon,
+    /** The weekly schedule as the page lists it, or null when it lists none */
+    val schedule: WeeklySchedule?,
+    val segments: List<Segment>,
+    val doubts: List<Doubt>,
+    val notices: List<Notice>,
+    val page: DocumentInfo?,
+    val alerts: List<DocumentInfo>,
+)
+
+/** Minutes for one trip. Null when WSDOT measured nothing. */
+data class TripTimes(
+    /** Through the express lanes. Null while they're closed or run the other way. */
+    val express: Int?,
+    /** On the regular lanes */
+    val regular: Int?,
+    /** What the regular lanes usually take at this time of day */
+    val usual: Int?,
+)
+
+data class Trips(val northbound: TripTimes, val southbound: TripTimes)
+
+/** WSDOT's travel times through the express lanes, which only exist in the direction they're open */
+data class LiveReading(
+    /** When WSDOT measured it */
+    val at: Instant,
+    /** Minutes from Seattle to Everett through the express lanes, or null when there's no measurement */
+    val northbound: Int?,
+    val southbound: Int?,
+    /** Downtown Seattle to Everett and back, express lanes against the regular lanes. Missing in old readings. */
+    val trips: Trips? = null,
+)
+
+/** A WSDOT traffic camera along the express lanes */
+data class Camera(
+    val id: Long,
+    /** Where it is, like "Roanoke St Express Lanes" */
+    val name: String,
+    val milepost: Double,
+    /** WSDOT's name for it says it looks at the express lanes */
+    val express: Boolean,
+    val lat: Double,
+    val lon: Double,
+    /** A JPEG on WSDOT's server, updated about every 5 minutes */
+    val image: String,
+)
+
+/** GET /status */
+data class ServerStatus(
+    val published: Published?,
+    /** When the server last read WSDOT's page successfully */
+    val fetchedAt: Instant?,
+    /** When the server last tried */
+    val checkedAt: Instant?,
+    /** Why the last try failed */
+    val error: String?,
+    val live: LiveReading?,
+    /** Cameras along the express lanes, south to north. Empty from older servers. */
+    val cameras: List<Camera> = emptyList(),
 ) {
-    val closures: List<Closure> get() = events.mapNotNull { it.closure }
-
-    fun earlyClose(day: LocalDate) = earlyCloses.firstOrNull { it.day == day }
-
     companion object {
-        val BUILT_IN = ExpressLanesInfo()
+        val EMPTY = ServerStatus(null, null, null, null, null)
     }
 }
 
 object Sources {
+    const val STATUS = "https://i5.andrewmacheret.com/status"
     const val EXPRESS_LANES = "https://wsdot.wa.gov/travel/roads-bridges/express-lanes"
-    const val REVIVE_I5 = "https://wsdot.wa.gov/construction-planning/search-projects/revive-i-5-preserving-vital-freeway"
-    const val TRAVEL_MAP = "https://wsdot.com/travel/real-time/map/"
-    const val WSDOT_TRAFFIC_X = "https://x.com/wsdot_traffic"
+    const val MAP = "https://wsdot.com/Travel/Real-time/Map/"
+
+    /** The travel map on the express lanes, with cameras, traffic and alerts on */
+    const val TRAVEL_MAP =
+        "https://wsdot.com/Travel/Real-time/Map/?layers=traffic-flow%2Calert%2Ccamera&base=wsdot&extent=-122.40%2C47.595%2C-122.25%2C47.715&fromLink=true"
+
+    /** WSDOT Traffic on Bluesky, for King and Snohomish counties. Readable without signing in. */
+    const val WSDOT_TRAFFIC = "https://bsky.app/profile/traffic.wsdot.wa.gov"
     const val PRIVACY = "https://github.com/andrewmacheret/i5-android/blob/main/PRIVACY.md"
 }

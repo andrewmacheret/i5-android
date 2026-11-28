@@ -12,12 +12,12 @@ import java.time.Instant
 
 /** Wakes the app at the next moment the widget needs to change. */
 object Alarms {
-    /** The lanes changing, Seattle midnight (new day, new rules) or the data going stale */
+    /** The lanes changing, Seattle midnight (a new day on the widget), the data going stale, or a doubt starting or ending */
     fun nextWake(snap: Snapshot): Instant? {
         val candidates = listOfNotNull(
             snap.next?.at,
-            Seattle.startOfDay(snap.todayDay.plusDays(1)),
-            Trust.staleAt(snap.result),
+            Seattle.startOfDay(snap.today.plusDays(1)),
+            Trust.nextReview(snap.status, snap.now),
         )
         return candidates.filter { it.isAfter(snap.now) }.minOrNull()
     }

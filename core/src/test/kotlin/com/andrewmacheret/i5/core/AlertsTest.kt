@@ -1,84 +1,88 @@
 package com.andrewmacheret.i5.core
 
 import java.time.Duration
+import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class AlertsTest {
-    private val result = FetchResult(Parser.parse(fixture(), seattle(2026, 11, 18, 10)), DataSource.Live(seattle(2026, 11, 18, 10)))
+    // The server's real timeline from Dec 1, 2026: the regular schedule, closing early at 9 p.m. on Wed, Dec 2,
+    // and a weekend closure from Fri, Dec 4 whose start time is approximate
+    private val base = fixture("confident").status.copy(live = null)
 
     /** A snapshot at `at`, with the data read 5 minutes earlier so it's always fresh */
-    private fun snap(at: java.time.Instant) =
-        Snapshot.make(result.copy(source = DataSource.Live(at.minus(Duration.ofMinutes(5)))), at)
+    private fun snap(at: Instant, status: ServerStatus = base, refreshing: Boolean = false) =
+        Snapshot.make(status.copy(fetchedAt = at.minus(Duration.ofMinutes(5))), at, refreshing)
 
-    @Test fun reportsDirectionChangeOnTime() {
-        val before = snap(seattle(2026, 11, 19, 4, 50))
-        val after = snap(seattle(2026, 11, 19, 5, 0))
-        val msg = Alerts.decide(Alerts.seen(before), after)
-        assertEquals(Alerts.Message("I-5 express lanes now southbound", "Closes at 11:00 AM"), msg)
+    private fun change(from: String, to: String) = Alerts.decide(Alerts.seen(snap(t(from))), snap(t(to)))
+
+    @Test fun reportsADirectionChangeOnTime() {
+        assertEquals(Alerts.Message("I-5 express lanes now southbound", "Closes at 11:00 AM"), change("2026-12-02T04:50", "2026-12-02T05:00"))
     }
 
     @Test fun skipsOldNews() {
         // The phone slept through the 5 a.m. switch and woke at 6:30
-        val before = snap(seattle(2026, 11, 19, 4, 50))
-        val after = snap(seattle(2026, 11, 19, 6, 30))
-        assertNull(Alerts.decide(Alerts.seen(before), after))
+        assertNull(change("2026-12-02T04:50", "2026-12-02T06:30"))
     }
 
-    @Test fun skipsShortClosedGap() {
-        val before = snap(seattle(2026, 11, 19, 10, 55))
-        val after = snap(seattle(2026, 11, 19, 11, 0))
-        assertNull(Alerts.decide(Alerts.seen(before), after))
-        val north = snap(seattle(2026, 11, 19, 11, 15))
-        assertEquals("I-5 express lanes now northbound", Alerts.decide(Alerts.seen(after), north)?.title)
+    @Test fun skipsTheShortClosedGap() {
+        assertNull(change("2026-12-02T10:55", "2026-12-02T11:00"))
+        assertEquals("I-5 express lanes now northbound", change("2026-12-02T11:00", "2026-12-02T11:15")?.title)
     }
 
-    @Test fun reportsEarlyClosure() {
-        val before = snap(seattle(2026, 11, 18, 20, 30))
-        val after = snap(seattle(2026, 11, 18, 21, 0))
-        assertEquals(Alerts.Message("I-5 express lanes closed", "Opens southbound at 5:00 AM tomorrow"), Alerts.decide(Alerts.seen(before), after))
+    @Test fun reportsAnEarlyClosure() {
+        assertEquals(Alerts.Message("I-5 express lanes closed", "Opens southbound at 5:00 AM tomorrow"), change("2026-12-02T20:30", "2026-12-02T21:00"))
     }
 
-    @Test fun reportsLosingConfidenceWhenLanesWouldOpen() {
-        val before = snap(seattle(2026, 11, 25, 22))
-        val seen = Alerts.seen(before)
-        // Thanksgiving starts at midnight, but the lanes are posted closed until 5 a.m.
-        val midnight = snap(seattle(2026, 11, 26, 0, 0))
-        assertTrue(Alerts.waiting(midnight))
-        assertNull(Alerts.decide(seen, midnight))
+    @Test fun reportsLosingConfidenceWhileTheLanesAreOpen() {
+        // The closure starts "as early as 11 p.m.", so the server can't vouch for the two hours before it
         assertEquals(
-            Alerts.Message("Can't confirm the I-5 express lanes", "Thanksgiving may run a holiday schedule"),
-            Alerts.decide(seen, snap(seattle(2026, 11, 26, 5, 0))),
+            Alerts.Message("Can't confirm the I-5 express lanes", "Weekend-long full closure: start time is approximate"),
+            change("2026-12-04T20:50", "2026-12-04T21:00"),
         )
     }
 
-    @Test fun quietWhenOnlyTheDataIsOld() {
+    @Test fun holdsACantConfirmUntilTheLanesWouldOpen() {
+        val p = published(doubts = listOf(doubt("2026-11-19T00:00", "2026-11-20T00:00", title = "No word yet on Thanksgiving", source = "holiday")))
+        val st = status(t("2026-11-18T22:00"), p)
+        fun at(s: String) = Snapshot.make(st.copy(fetchedAt = t(s).minus(Duration.ofMinutes(5))), t(s))
+        val seen = Alerts.seen(at("2026-11-18T22:00"))
+        // The doubt starts at midnight, but the lanes are closed until 5 a.m.
+        val midnight = at("2026-11-19T00:00")
+        assertTrue(Alerts.waiting(midnight))
+        assertNull(Alerts.decide(seen, midnight))
+        assertEquals(
+            Alerts.Message("Can't confirm the I-5 express lanes", "No word yet on Thanksgiving"),
+            Alerts.decide(seen, at("2026-11-19T05:00")),
+        )
+    }
+
+    @Test fun staysQuietWhenOnlyTheDataIsOld() {
         // At boot or overnight with no network, old data alone doesn't buzz
-        val before = snap(seattle(2026, 11, 19, 6))
-        val old = result.copy(source = DataSource.Live(seattle(2026, 11, 19, 6)))
-        val after = Snapshot.make(old, seattle(2026, 11, 19, 9))
+        val before = snap(t("2026-12-02T06:00"))
+        val after = Snapshot.make(base.copy(fetchedAt = t("2026-12-02T06:00")), t("2026-12-02T09:00"))
         assertEquals(Assessment.Verdict.UNCERTAIN, after.check.verdict)
         assertTrue(Alerts.waiting(after))
         assertNull(Alerts.decide(Alerts.seen(before), after))
     }
 
-    @Test fun quietWhileUncertainOrChecking() {
-        val stale = result.copy(source = DataSource.Live(seattle(2026, 11, 19, 1)))
-        val before = Snapshot.make(stale, seattle(2026, 11, 19, 4, 55))
-        val after = Snapshot.make(stale, seattle(2026, 11, 19, 5, 0), refreshing = true)
+    @Test fun staysQuietWhileCheckingOrDownloading() {
+        val old = base.copy(fetchedAt = t("2026-12-02T01:00"))
+        val before = Snapshot.make(old, t("2026-12-02T04:55"))
+        val after = Snapshot.make(old, t("2026-12-02T05:00"), refreshing = true)
         assertEquals(Assessment.Verdict.CHECKING, after.check.verdict)
         assertNull(Alerts.decide(Alerts.seen(before), after))
         assertNull(Alerts.decide(null, after))
+        // The server reading a new page is quiet too
+        val checking = fixture("checking")
+        val c = checking.snap()
+        assertEquals(Assessment.Verdict.CHECKING, c.check.verdict)
+        assertNull(Alerts.decide(Alerts.seen(snap(checking.at)), c))
     }
 
-    @Test fun snapshotText() {
-        val s = snap(seattle(2026, 11, 18, 16, 55))
-        assertEquals("Closes at 9:00 PM", s.nextText)
-        assertEquals(t(21), s.earlyCloseTonight)
-        assertEquals("Thanksgiving", s.upcomingHolidays.first().second)
-        // The week ahead from Friday Nov 20 covers Thanksgiving and the day after
-        assertEquals(setOf(day(2026, 11, 26), day(2026, 11, 27)), snap(seattle(2026, 11, 20, 12)).doubtfulDays)
+    @Test fun leavesTheEndOfTheTimelineOutOfTheMessage() {
+        assertEquals(Alerts.Message("I-5 express lanes now southbound", ""), Alerts.change(LaneStatus.SOUTHBOUND, Change(t("2026-11-20T00:00"), LaneStatus.UNKNOWN), t("2026-11-19T05:00")))
     }
 }

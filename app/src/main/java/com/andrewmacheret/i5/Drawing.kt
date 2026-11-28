@@ -12,7 +12,7 @@ import androidx.core.graphics.createBitmap
 import androidx.core.graphics.withClip
 import com.andrewmacheret.i5.core.Assessment
 import com.andrewmacheret.i5.core.LaneStatus
-import com.andrewmacheret.i5.core.Segment
+import com.andrewmacheret.i5.core.DaySegment
 import com.andrewmacheret.i5.core.TimeOfDay
 
 /** Bitmaps for the widget, which can't draw custom shapes itself. Also used by the app. */
@@ -76,7 +76,7 @@ object Drawing {
     }
 
     /** A day as colored runs, with an optional marker for now. Faded when not confirmed. */
-    fun timeline(segments: List<Segment>, now: TimeOfDay?, widthPx: Int, heightPx: Int, faded: Boolean): Bitmap {
+    fun timeline(segments: List<DaySegment>, now: TimeOfDay?, widthPx: Int, heightPx: Int, faded: Boolean): Bitmap {
         val w = widthPx.coerceAtLeast(16).toFloat()
         val h = heightPx.coerceAtLeast(8).toFloat()
         val bmp = createBitmap(w.toInt(), h.toInt())
@@ -93,6 +93,10 @@ object Drawing {
             paint.color = LaneColors.timeline(LaneStatus.CLOSED).copy(alpha = 0.35f * alpha).toArgb()
             drawRect(bar, paint)
             for (seg in segments) {
+                if (seg.status == LaneStatus.UNKNOWN) {
+                    unknown(this, x(seg.start, w), barTop, x(seg.end, w), barBottom, alpha)
+                    continue
+                }
                 if (!seg.status.isOpen) continue
                 paint.color = LaneColors.timeline(seg.status).copy(alpha = alpha).toArgb()
                 drawRect(x(seg.start, w), barTop, x(seg.end, w), barBottom, paint)
@@ -108,6 +112,22 @@ object Drawing {
             c.drawRoundRect(RectF(nx - h * 0.05f, h * 0.05f, nx + h * 0.05f, h * 0.95f), h * 0.05f, h * 0.05f, paint)
         }
         return bmp
+    }
+
+    /** Gray stripes for times the server's timeline doesn't cover */
+    private fun unknown(c: Canvas, left: Float, top: Float, right: Float, bottom: Float, alpha: Float) {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = LaneColors.badge(LaneStatus.UNKNOWN).copy(alpha = 0.6f * alpha).toArgb()
+            strokeWidth = (bottom - top) * 0.18f
+        }
+        val step = (bottom - top) * 0.7f
+        c.withClip(left, top, right, bottom) {
+            var x = left - (bottom - top)
+            while (x < right) {
+                drawLine(x, bottom, x + (bottom - top), top, paint)
+                x += step
+            }
+        }
     }
 
     private fun x(t: TimeOfDay, w: Float) = w * t.minutes / (24f * 60f)

@@ -33,7 +33,7 @@ class DebugReceiver : BroadcastReceiver() {
                 when (intent.getStringExtra("notify")) {
                     "change" -> Notifier.post(context, Alerts.Message("I-5 express lanes now northbound", "Closes at 11:00 PM"))
                     "closed" -> Notifier.post(context, Alerts.Message("I-5 express lanes closed", "Opens southbound at 5:00 AM tomorrow"))
-                    "cantconfirm" -> Notifier.post(context, Alerts.Message("Can't confirm the I-5 express lanes", "Thanksgiving may run a holiday schedule"))
+                    "cantconfirm" -> Notifier.post(context, Alerts.Message("Can't confirm the I-5 express lanes", "No word yet on Thanksgiving"))
                 }
             } finally {
                 pending.finish()

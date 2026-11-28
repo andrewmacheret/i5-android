@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit
 class RefreshWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val asked = inputData.getBoolean(ASKED, false)
-        if (!asked && !Updates.due(applicationContext, Lanes.load().source.fetchedAt)) {
+        if (!asked && !Updates.due(applicationContext, Lanes.load().loadedAt)) {
             Log.i("I5", "skipped a check, the data is new enough for this network")
             return Result.success()
         }

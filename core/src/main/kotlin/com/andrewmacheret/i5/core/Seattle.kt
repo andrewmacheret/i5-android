@@ -18,7 +18,10 @@ object Seattle {
         return TimeOfDay.of(z.hour, z.minute)
     }
 
-    /** The instant a Seattle wall clock shows `time` on `day`. END_OF_DAY means the next midnight. */
+    /**
+     * The instant a Seattle wall clock shows `time` on `day`. END_OF_DAY means the next midnight.
+     * A time skipped by spring forward moves later by an hour, and a time repeated by fall back picks the first one.
+     */
     fun instant(day: LocalDate, time: TimeOfDay): Instant {
         if (time.minutes >= 24 * 60) return startOfDay(day.plusDays(1))
         return day.atTime(LocalTime.of(time.minutes / 60, time.minutes % 60)).atZone(zone).toInstant()
@@ -29,4 +32,8 @@ object Seattle {
     fun isWeekend(day: LocalDate) = day.dayOfWeek == DayOfWeek.SATURDAY || day.dayOfWeek == DayOfWeek.SUNDAY
 
     fun daysBetween(a: LocalDate, b: LocalDate) = ChronoUnit.DAYS.between(a, b)
+
+    /** True when the phone's clock isn't on Seattle time right now */
+    fun differsFromLocal(at: Instant, local: ZoneId = ZoneId.systemDefault()) =
+        local.rules.getOffset(at) != zone.rules.getOffset(at)
 }

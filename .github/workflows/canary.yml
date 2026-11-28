@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  wsdot:
+  server:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -21,10 +21,10 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v6
 
-      # WSDOT's site sometimes times out once, so try again before failing
-      - name: Read WSDOT's page
+      # A cold Lambda sometimes times out once, so try again before failing
+      - name: Read the I-5 server
         env:
           I5_LIVE: "1"
         run: |
-          ./gradlew :core:test --tests '*LivePageTest' --console=plain ||
-            (sleep 30 && ./gradlew :core:test --tests '*LivePageTest' --rerun --console=plain)
+          ./gradlew :core:test --tests '*LiveStatusTest' --console=plain ||
+            (sleep 30 && ./gradlew :core:test --tests '*LiveStatusTest' --rerun --console=plain)

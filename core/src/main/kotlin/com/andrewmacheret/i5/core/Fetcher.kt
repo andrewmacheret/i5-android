@@ -5,85 +5,64 @@ import java.net.HttpURLConnection
 import java.net.URI
 import java.time.Instant
 
-sealed interface DataSource {
-    /** Freshly read from WSDOT */
-    data class Live(val at: Instant) : DataSource
-
-    /** Using the last good copy, saved at this time */
-    data class Cached(val at: Instant) : DataSource
-
-    /** Nothing good saved, using the schedule baked into the app */
-    data object BuiltIn : DataSource
-
-    /** When WSDOT's page was read, or null for the built-in schedule */
-    val fetchedAt: Instant?
-        get() = when (this) {
-            is Live -> at
-            is Cached -> at
-            BuiltIn -> null
-        }
-}
-
 data class FetchResult(
-    val info: ExpressLanesInfo,
-    val source: DataSource,
+    /** The server's answer, or EMPTY when there's none yet */
+    val status: ServerStatus,
+    /** When the app got it from the server, or null when there's none */
+    val loadedAt: Instant?,
+    /** Why the last download failed */
     val error: String? = null,
-    /** WSDOT's page loaded but couldn't be read */
-    val pageChanged: Boolean = false,
 )
 
-/** Downloads the WSDOT page and keeps the last good copy on disk. */
-class Fetcher(private val cacheDir: File, private val download: (String) -> String = ::httpGet) {
-    private val pageFile get() = File(cacheDir, "express-lanes.html")
-
-    // Remembers that the newest page couldn't be read, until a good one comes in.
-    // Without it a restart or a failed download would quietly trust the old copy again.
-    private val problemFile get() = File(cacheDir, "page-problem.txt")
+/** Downloads the server's status and keeps the last good copy on disk. */
+class Fetcher(
+    private val cacheDir: File,
+    private val download: (String) -> String = { httpGet(it, DEFAULT_USER_AGENT) },
+) {
+    private val file get() = File(cacheDir, "status.json")
 
     /** Blocking. Call from a background thread. */
     fun load(now: Instant = Instant.now()): FetchResult {
-        val html = try {
-            download(Sources.EXPRESS_LANES)
+        val text = try {
+            download(Sources.STATUS)
         } catch (e: Exception) {
-            return cachedOrBuiltIn(now, e.message ?: e.javaClass.simpleName)
+            return saved(e.message ?: e.javaClass.simpleName)
         }
-        val info = Parser.parse(html, now)
+        val status = try {
+            StatusJson.decode(text)
+        } catch (e: Exception) {
+            return saved("The server sent something the app couldn't read")
+        }
+        // Don't replace a good copy with one that has no timeline
+        if (status.published == null && saved().status.published != null) return saved("The server hasn't published a schedule yet")
         cacheDir.mkdirs()
-        if (!info.scheduleFromPage) {
-            // Don't overwrite the last good copy with a page we can't read
-            problemFile.writeText(info.warnings.joinToString("\n"))
-            return cachedOrBuiltIn(now, "Couldn't read WSDOT's page")
-        }
         // Write then rename so a crash never leaves half a file
-        val tmp = File(cacheDir, "express-lanes.html.tmp")
-        tmp.writeText(html)
-        tmp.renameTo(pageFile)
-        pageFile.setLastModified(now.toEpochMilli())
-        problemFile.delete()
-        return FetchResult(info, DataSource.Live(now))
+        val tmp = File(cacheDir, "status.json.tmp")
+        tmp.writeText(text)
+        tmp.renameTo(file)
+        file.setLastModified(now.toEpochMilli())
+        return FetchResult(status, now)
     }
 
-    fun cachedOrBuiltIn(now: Instant = Instant.now(), error: String? = null): FetchResult {
-        val file = pageFile
-        val cached = if (file.exists()) Parser.parse(file.readText(), now).takeIf { it.scheduleFromPage } else null
-        val base = if (cached != null) {
-            FetchResult(cached, DataSource.Cached(Instant.ofEpochMilli(file.lastModified())), error)
-        } else {
-            FetchResult(ExpressLanesInfo.BUILT_IN, DataSource.BuiltIn, error)
-        }
-        val problems = problemFile.takeIf { it.exists() }?.readLines()?.filter { it.isNotBlank() } ?: return base
-        return base.copy(pageChanged = true, info = base.info.copy(warnings = base.info.warnings + problems))
+    /** The last good copy, or EMPTY */
+    fun saved(error: String? = null): FetchResult {
+        val f = file
+        val status = if (f.exists()) runCatching { StatusJson.decode(f.readText()) }.getOrNull() else null
+        return if (status != null) FetchResult(status, Instant.ofEpochMilli(f.lastModified()), error) else FetchResult(ServerStatus.EMPTY, null, error)
     }
 
     companion object {
-        fun httpGet(url: String): String {
+        const val DEFAULT_USER_AGENT = "I5Express-Android (+https://github.com/andrewmacheret/i5-android)"
+
+        fun httpGet(url: String, userAgent: String = DEFAULT_USER_AGENT): String {
             val conn = URI(url).toURL().openConnection() as HttpURLConnection
             conn.connectTimeout = 20_000
             conn.readTimeout = 20_000
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Android) I5Express")
+            conn.setRequestProperty("User-Agent", userAgent)
+            conn.setRequestProperty("Accept", "application/json")
             conn.useCaches = false
             try {
-                if (conn.responseCode != 200) throw IllegalStateException("WSDOT returned HTTP ${conn.responseCode}")
+                if (conn.responseCode != 200) throw IllegalStateException("The server returned HTTP ${conn.responseCode}")
                 return conn.inputStream.bufferedReader().use { it.readText() }
             } finally {
                 conn.disconnect()

@@ -50,13 +50,11 @@ import com.andrewmacheret.i5.Lanes
 import com.andrewmacheret.i5.R
 import com.andrewmacheret.i5.Work
 import com.andrewmacheret.i5.core.Assessment
-import com.andrewmacheret.i5.core.DataSource
 import com.andrewmacheret.i5.core.Format
 import com.andrewmacheret.i5.core.LaneStatus
 import com.andrewmacheret.i5.core.Seattle
 import com.andrewmacheret.i5.core.Snapshot
 import com.andrewmacheret.i5.ui.MainActivity
-import java.time.ZoneId
 
 class LanesWidget : GlanceAppWidget() {
     // Exact sizes, so the timeline bitmap matches the real width
@@ -117,7 +115,7 @@ private fun WidgetContent(snap: Snapshot) {
 /** One cell: just the badge, with the next change time if there's room */
 @Composable
 private fun Tiny(snap: Snapshot, width: Dp, height: Dp) {
-    val next = snap.next?.takeIf { height >= 80.dp && snap.check.verdict == Assessment.Verdict.CONFIDENT }
+    val next = snap.next?.takeIf { height >= 80.dp && snap.check.verdict == Assessment.Verdict.CONFIDENT && it.to != LaneStatus.UNKNOWN }
     // Smaller or shorter if needed, and no time at all rather than a cut off one
     val context = LocalContext.current
     val time = next?.let {
@@ -174,7 +172,7 @@ private fun Timeline(snap: Snapshot, width: Dp, height: Dp) {
     Image(
         provider = ImageProvider(
             Drawing.timeline(
-                snap.today,
+                snap.todaySegments,
                 Seattle.time(snap.now),
                 (width.value * density).toInt(),
                 (height.value * density).toInt(),
@@ -252,14 +250,15 @@ private fun ExtraRows(snap: Snapshot, rows: Int, width: Dp) {
     val context = LocalContext.current
     val small = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 12.sp)
     if (snap.check.verdict == Assessment.Verdict.UNCERTAIN) {
-        val posted = snap.check.scheduled.title.lowercase()
-        val first = TextFit.first(context, listOf("Posted schedule: $posted, not confirmed", "Posted: $posted"), 12f, width)
+        val expected = snap.check.scheduled.title.lowercase()
+        val first = if (snap.check.scheduled == LaneStatus.UNKNOWN) null
+        else TextFit.first(context, listOf("Expected $expected, not confirmed", "Expected: $expected"), 12f, width)
         val lines = listOfNotNull(first) + snap.check.concerns.drop(1).map { "⚠ ${it.title}" }
         for (line in lines.take(rows)) Text(line, style = small, maxLines = 1)
         return
     }
     if (snap.check.verdict != Assessment.Verdict.CONFIDENT) return
-    for (c in snap.changes.drop(1).take(rows)) {
+    for (c in snap.changes.drop(1).filter { it.to != LaneStatus.UNKNOWN }.take(rows)) {
         // Shorter words before a cut off time. The spaces stand in for the gap between the two.
         val time = Format.whenText(c.at, snap.now)
         val (status, at) = listOf(c.to.title to time, short(c.to) to time, short(c.to) to Format.clock(c.at))
@@ -318,7 +317,7 @@ private fun short(status: LaneStatus) = when (status) {
 
 private fun detail(snap: Snapshot) = when (snap.check.verdict) {
     Assessment.Verdict.CONFIDENT -> snap.nextText
-    Assessment.Verdict.CHECKING -> "Reading WSDOT's schedule"
+    Assessment.Verdict.CHECKING -> if (snap.check.concerns.all { it.checking }) "Reading WSDOT's latest update" else "Asking the server"
     Assessment.Verdict.UNCERTAIN -> snap.check.concerns.firstOrNull()?.title ?: "Tap for details"
 }
 
@@ -327,6 +326,10 @@ private fun detail(snap: Snapshot) = when (snap.check.verdict) {
 private fun fittedDetail(snap: Snapshot, sp: Float, width: Dp, lines: Int): String {
     val next = snap.next
     if (snap.check.verdict != Assessment.Verdict.CONFIDENT || next == null) return detail(snap)
+    if (next.to == LaneStatus.UNKNOWN) {
+        val date = Format.shortDate(next.at)
+        return TextFit.first(LocalContext.current, listOf("No changes before $date", "until $date"), sp, width, lines) ?: date
+    }
     val options = listOf(
         snap.nextText,
         "until ${Format.whenText(next.at, snap.now)}",
@@ -337,18 +340,15 @@ private fun fittedDetail(snap: Snapshot, sp: Float, width: Dp, lines: Int): Stri
 }
 
 /** Mentions Seattle time when the phone is set to another time zone. Longest first. */
-private fun captions(snap: Snapshot): List<String> {
-    val here = ZoneId.systemDefault().rules.getOffset(snap.now)
-    val there = Seattle.zone.rules.getOffset(snap.now)
-    return if (here == there) listOf("I-5 EXPRESS LANES", "I-5 EXPRESS") else listOf("I-5 EXPRESS · SEATTLE TIME", "SEATTLE TIME")
-}
+private fun captions(snap: Snapshot): List<String> =
+    if (!Seattle.differsFromLocal(snap.now)) listOf("I-5 EXPRESS LANES", "I-5 EXPRESS") else listOf("I-5 EXPRESS · SEATTLE TIME", "SEATTLE TIME")
 
 /** Longest first, for when the widget is narrow */
 private fun sourceTexts(snap: Snapshot): List<String> {
-    if (snap.check.verdict == Assessment.Verdict.CHECKING) return listOf("Checking WSDOT…")
-    return when (val s = snap.result.source) {
-        is DataSource.Live -> Format.whenText(s.at, snap.now).let { listOf("Checked WSDOT $it", "Checked $it", it) }
-        is DataSource.Cached -> Format.whenText(s.at, snap.now).let { listOf("Saved copy from $it", "Saved $it", it) }
-        DataSource.BuiltIn -> listOf("Built-in schedule only")
-    }
+    if (snap.refreshing) return listOf("Asking the server…", "Checking…")
+    val at = snap.status.fetchedAt ?: return listOf(if (snap.loadError != null) "Can't reach the server" else "No data yet", "No data yet")
+    val time = Format.whenText(at, snap.now)
+    // A failed download means this is the copy saved on the phone
+    return if (snap.loadError != null) listOf("Saved copy from $time", "Saved $time", time)
+    else listOf("Checked WSDOT $time", "Checked $time", time)
 }

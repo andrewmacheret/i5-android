@@ -33,7 +33,7 @@ class TickReceiver : BroadcastReceiver() {
         }
         // Data just went stale, so try for fresh data right away
         val snap = Lanes.snapshot()
-        val stale = Trust.staleAt(snap.result)?.let { !it.isAfter(snap.now) } ?: true
+        val stale = Trust.staleAt(snap.status)?.let { !it.isAfter(snap.now) } ?: true
         if (stale && !Lanes.inScenario) Work.refreshSoon(context)
     }
 }

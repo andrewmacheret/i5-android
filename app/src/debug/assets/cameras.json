@@ -1,0 +1,472 @@
+{
+ "cameras": [
+  {
+   "id": 1028,
+   "name": "Yesler Way",
+   "milepost": 165,
+   "express": false,
+   "lat": 47.6017,
+   "lon": -122.324892,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16511.jpg"
+  },
+  {
+   "id": 9518,
+   "name": "5th Ave/Cherry",
+   "milepost": 165.4,
+   "express": false,
+   "lat": 47.6044,
+   "lon": -122.3298,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16540.jpg"
+  },
+  {
+   "id": 9519,
+   "name": "Columbia St Express Lanes",
+   "milepost": 165.4,
+   "express": true,
+   "lat": 47.606028,
+   "lon": -122.32876,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16545.jpg"
+  },
+  {
+   "id": 9520,
+   "name": "5th Ave/Columbia",
+   "milepost": 165.4,
+   "express": false,
+   "lat": 47.605166,
+   "lon": -122.330316,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16547.jpg"
+  },
+  {
+   "id": 9984,
+   "name": "Cherry and Columbia",
+   "milepost": 165.4,
+   "express": false,
+   "lat": 47.604834,
+   "lon": -122.329657,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16542.jpg"
+  },
+  {
+   "id": 9521,
+   "name": "Marion St",
+   "milepost": 165.5,
+   "express": false,
+   "lat": 47.606683,
+   "lon": -122.329325,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16551.jpg"
+  },
+  {
+   "id": 9522,
+   "name": "Madison St Express Lanes",
+   "milepost": 165.5,
+   "express": true,
+   "lat": 47.607486,
+   "lon": -122.330009,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16556.jpg"
+  },
+  {
+   "id": 9523,
+   "name": "Seneca St, SB",
+   "milepost": 165.6,
+   "express": false,
+   "lat": 47.608498,
+   "lon": -122.331196,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16563.jpg"
+  },
+  {
+   "id": 9524,
+   "name": "Seneca St Express Lanes",
+   "milepost": 165.6,
+   "express": true,
+   "lat": 47.608819,
+   "lon": -122.330781,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16565.jpg"
+  },
+  {
+   "id": 9525,
+   "name": "University St, SB",
+   "milepost": 165.7,
+   "express": false,
+   "lat": 47.609488,
+   "lon": -122.330967,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16571.jpg"
+  },
+  {
+   "id": 9526,
+   "name": "University St Ramp",
+   "milepost": 165.7,
+   "express": false,
+   "lat": 47.609905,
+   "lon": -122.331009,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16574.jpg"
+  },
+  {
+   "id": 9527,
+   "name": "University St, NB",
+   "milepost": 165.8,
+   "express": false,
+   "lat": 47.610876,
+   "lon": -122.330912,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16580.jpg"
+  },
+  {
+   "id": 9528,
+   "name": "Union St Express Lanes",
+   "milepost": 165.8,
+   "express": true,
+   "lat": 47.612021,
+   "lon": -122.330516,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16588.jpg"
+  },
+  {
+   "id": 9529,
+   "name": "Pike St/9th Ave",
+   "milepost": 165.9,
+   "express": false,
+   "lat": 47.612477,
+   "lon": -122.331107,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16596.jpg"
+  },
+  {
+   "id": 9530,
+   "name": "Pike St, SB",
+   "milepost": 165.9,
+   "express": false,
+   "lat": 47.61331,
+   "lon": -122.330004,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16597.jpg"
+  },
+  {
+   "id": 9531,
+   "name": "Pike St, NB",
+   "milepost": 165.9,
+   "express": false,
+   "lat": 47.613467,
+   "lon": -122.329944,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16598.jpg"
+  },
+  {
+   "id": 9532,
+   "name": "9th Ave at Pike",
+   "milepost": 165.9,
+   "express": false,
+   "lat": 47.612603,
+   "lon": -122.33118,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16599.jpg"
+  },
+  {
+   "id": 1029,
+   "name": "Pine St",
+   "milepost": 166,
+   "express": false,
+   "lat": 47.614804,
+   "lon": -122.329427,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16607.jpg"
+  },
+  {
+   "id": 9533,
+   "name": "Pike St Express Lanes",
+   "milepost": 166,
+   "express": true,
+   "lat": 47.614097,
+   "lon": -122.329704,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16602.jpg"
+  },
+  {
+   "id": 9534,
+   "name": "Pike Express Lanes Ramp",
+   "milepost": 166.1,
+   "express": true,
+   "lat": 47.615592,
+   "lon": -122.329555,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16612.jpg"
+  },
+  {
+   "id": 9535,
+   "name": "Howell St",
+   "milepost": 166.3,
+   "express": false,
+   "lat": 47.617917,
+   "lon": -122.328414,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16630.jpg"
+  },
+  {
+   "id": 9365,
+   "name": "Denny Way",
+   "milepost": 166.4,
+   "express": false,
+   "lat": 47.620107,
+   "lon": -122.328208,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16645.jpg"
+  },
+  {
+   "id": 9366,
+   "name": "John St Express Lanes",
+   "milepost": 166.4,
+   "express": true,
+   "lat": 47.619963,
+   "lon": -122.328207,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16644.jpg"
+  },
+  {
+   "id": 9536,
+   "name": "Stewart/Eastlake Ramp",
+   "milepost": 166.4,
+   "express": false,
+   "lat": 47.619719,
+   "lon": -122.329111,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16646.jpg"
+  },
+  {
+   "id": 9367,
+   "name": "Mercer St Express Lanes",
+   "milepost": 166.7,
+   "express": true,
+   "lat": 47.624417,
+   "lon": -122.328129,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16675.jpg"
+  },
+  {
+   "id": 9537,
+   "name": "Mercer St Ramps",
+   "milepost": 166.8,
+   "express": false,
+   "lat": 47.625231,
+   "lon": -122.33098,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16680.jpg"
+  },
+  {
+   "id": 9538,
+   "name": "Mercer St NB Ramp",
+   "milepost": 166.8,
+   "express": false,
+   "lat": 47.626132,
+   "lon": -122.329009,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16687.jpg"
+  },
+  {
+   "id": 1030,
+   "name": "Mercer St",
+   "milepost": 167,
+   "express": false,
+   "lat": 47.628274,
+   "lon": -122.327636,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16702.jpg"
+  },
+  {
+   "id": 9539,
+   "name": "Lakeview Express Lanes",
+   "milepost": 167,
+   "express": true,
+   "lat": 47.628412,
+   "lon": -122.327567,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16703.jpg"
+  },
+  {
+   "id": 9540,
+   "name": "Boylston Ave",
+   "milepost": 167.6,
+   "express": false,
+   "lat": 47.636303,
+   "lon": -122.322707,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16763.jpg"
+  },
+  {
+   "id": 1031,
+   "name": "Roanoke St",
+   "milepost": 168,
+   "express": false,
+   "lat": 47.643018,
+   "lon": -122.322545,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16811.jpg"
+  },
+  {
+   "id": 9541,
+   "name": "Roanoke St Express Lanes",
+   "milepost": 168,
+   "express": true,
+   "lat": 47.641693,
+   "lon": -122.322819,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16803.jpg"
+  },
+  {
+   "id": 9542,
+   "name": "Eastlake Ave Express Lanes",
+   "milepost": 168.5,
+   "express": true,
+   "lat": 47.650321,
+   "lon": -122.322434,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16859.jpg"
+  },
+  {
+   "id": 9299,
+   "name": "Ship Canal Bridge",
+   "milepost": 168.8,
+   "express": false,
+   "lat": 47.652997,
+   "lon": -122.322612,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16887.jpg"
+  },
+  {
+   "id": 9543,
+   "name": "Ship Canal Express Lanes",
+   "milepost": 168.8,
+   "express": true,
+   "lat": 47.654157,
+   "lon": -122.322362,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16886.jpg"
+  },
+  {
+   "id": 9544,
+   "name": "NE 40th St Express Lanes",
+   "milepost": 169,
+   "express": true,
+   "lat": 47.656432,
+   "lon": -122.322312,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16902.jpg"
+  },
+  {
+   "id": 9545,
+   "name": "7th Ave & 42nd",
+   "milepost": 169,
+   "express": false,
+   "lat": 47.657458,
+   "lon": -122.320936,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16908.jpg"
+  },
+  {
+   "id": 1406,
+   "name": "NE 42nd St Ramp",
+   "milepost": 169.1,
+   "express": false,
+   "lat": 47.657586,
+   "lon": -122.320909,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16913.jpg"
+  },
+  {
+   "id": 1032,
+   "name": "NE 45th St",
+   "milepost": 169.3,
+   "express": false,
+   "lat": 47.661773,
+   "lon": -122.321905,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16939.jpg"
+  },
+  {
+   "id": 9060,
+   "name": "NE 50th St",
+   "milepost": 169.6,
+   "express": false,
+   "lat": 47.665527,
+   "lon": -122.321745,
+   "image": "https://images.wsdot.wa.gov/nw/005vc16965.jpg"
+  },
+  {
+   "id": 9546,
+   "name": "NE Ravenna Blvd",
+   "milepost": 170.1,
+   "express": false,
+   "lat": 47.673056,
+   "lon": -122.321121,
+   "image": "https://images.wsdot.wa.gov/nw/005vc17018.jpg"
+  },
+  {
+   "id": 1033,
+   "name": "Lake City Way",
+   "milepost": 170.7,
+   "express": false,
+   "lat": 47.681848,
+   "lon": -122.3206,
+   "image": "https://images.wsdot.wa.gov/nw/005vc17078.jpg"
+  },
+  {
+   "id": 9401,
+   "name": "Lake City Way Express Lanes",
+   "milepost": 170.8,
+   "express": true,
+   "lat": 47.683447,
+   "lon": -122.32192,
+   "image": "https://images.wsdot.wa.gov/nw/005vc17082.jpg"
+  },
+  {
+   "id": 9400,
+   "name": "NE 77th St",
+   "milepost": 171,
+   "express": false,
+   "lat": 47.684585,
+   "lon": -122.323206,
+   "image": "https://images.wsdot.wa.gov/nw/005vc17101.jpg"
+  },
+  {
+   "id": 9547,
+   "name": "NE 80th St Express Lanes",
+   "milepost": 171.2,
+   "express": true,
+   "lat": 47.687228,
+   "lon": -122.326585,
+   "image": "https://images.wsdot.wa.gov/nw/005vc17124.jpg"
+  },
+  {
+   "id": 9972,
+   "name": "NE 80th St",
+   "milepost": 171.2,
+   "express": false,
+   "lat": 47.686849,
+   "lon": -122.326675,
+   "image": "https://images.wsdot.wa.gov/nw/005vc17125.jpg"
+  },
+  {
+   "id": 1034,
+   "name": "NE 85th St",
+   "milepost": 171.5,
+   "express": false,
+   "lat": 47.691112,
+   "lon": -122.32908,
+   "image": "https://images.wsdot.wa.gov/nw/005vc17153.jpg"
+  },
+  {
+   "id": 9548,
+   "name": "N 92nd St",
+   "milepost": 171.9,
+   "express": false,
+   "lat": 47.696061,
+   "lon": -122.329598,
+   "image": "https://images.wsdot.wa.gov/nw/005vc17191.jpg"
+  },
+  {
+   "id": 9549,
+   "name": "NE 103rd Express Lanes Ramp",
+   "milepost": 172.4,
+   "express": true,
+   "lat": 47.703501,
+   "lon": -122.328684,
+   "image": "https://images.wsdot.wa.gov/nw/005vc17240.jpg"
+  },
+  {
+   "id": 9550,
+   "name": "1st Ave & 103rd",
+   "milepost": 172.4,
+   "express": false,
+   "lat": 47.704038,
+   "lon": -122.328735,
+   "image": "https://images.wsdot.wa.gov/nw/005vc17245.jpg"
+  },
+  {
+   "id": 1409,
+   "name": "NE 107th St",
+   "milepost": 172.6,
+   "express": false,
+   "lat": 47.706745,
+   "lon": -122.329665,
+   "image": "https://images.wsdot.wa.gov/nw/005vc17263.jpg"
+  },
+  {
+   "id": 1035,
+   "name": "N Northgate Way",
+   "milepost": 172.7,
+   "express": false,
+   "lat": 47.709981,
+   "lon": -122.329563,
+   "image": "https://images.wsdot.wa.gov/nw/005vc17287.jpg"
+  }
+ ]
+}

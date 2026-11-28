@@ -57,6 +57,9 @@ android {
         compose = true
         buildConfig = true
     }
+
+    // Debug scenarios use the same server responses as the tests
+    sourceSets.getByName("debug").assets.srcDir("../core/src/test/resources/fixtures")
 }
 
 dependencies {

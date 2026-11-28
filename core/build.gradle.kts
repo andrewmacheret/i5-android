@@ -1,4 +1,4 @@
-// Plain Kotlin, no Android. Reads WSDOT's page and works out the lane status.
+// Plain Kotlin, no Android. Reads the I-5 server's timeline and works out what to show.
 plugins {
     alias(libs.plugins.kotlin.jvm)
 }

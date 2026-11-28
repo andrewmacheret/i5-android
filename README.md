@@ -6,9 +6,9 @@
 
 A home screen widget that shows which way Seattle's I-5 express lanes are running right now, and whether they're open at all. Tap it for the details.
 
-<img src="docs/home.png" width="300" alt="An Android home screen with the I-5 Express widget showing Northbound, closes at 9:00 PM, with a timeline for today">
+<img src="docs/home.png" width="300" alt="An Android home screen with the I-5 Express widget showing Northbound, closes at 11:00 PM, with a timeline for today">
 
-It's the Android version of [i5-macos-menubar](https://github.com/andrewmacheret/i5-macos-menubar), and uses the same rules.
+The schedule comes from [i5-server-lambdas](https://github.com/andrewmacheret/i5-server-lambdas), a small server that reads WSDOT's express lanes page and highway alerts every 15 minutes and has two AI models read each new notice. It's the Android version of [i5-macos-menubar](https://github.com/andrewmacheret/i5-macos-menubar) and of the web page [i5-client](https://andrewmacheret.com/projects/i5/), and shows the same thing.
 
 ## Features
 
@@ -16,16 +16,16 @@ It's the Android version of [i5-macos-menubar](https://github.com/andrewmacheret
 
 - A colored badge shows the current state: green **N** for northbound, blue **S** for southbound, red **✕** for closed.
 - Under it: when the lanes change next, the next couple of changes after that, and a timeline of today with a marker for now.
-- An amber **⚠ Can't confirm** replaces the badge whenever the app can't vouch for the status, with the reason. It still shows the posted schedule, labeled "not confirmed". See [When to trust it](#when-to-trust-it).
-- A gray **? Checking…** shows briefly while the app re-reads WSDOT's page.
-- The refresh button in the corner re-reads WSDOT's page. Tapping anywhere else opens the app.
+- An amber **⚠ Can't confirm** replaces the badge whenever the app can't vouch for the status, with the reason. It still shows the expected schedule, labeled "not confirmed". See [When to trust it](#when-to-trust-it).
+- A gray **? Checking…** shows briefly while the server reads a new update from WSDOT, or while the app asks the server.
+- The refresh button in the corner asks the server again. Tapping anywhere else opens the app.
 - The widget updates itself at the exact minute the lanes change, at midnight, and when its data gets too old to trust. It doesn't wait for the next scheduled check.
 
 <img src="docs/widget-states.png" width="600" alt="Six widgets: northbound, southbound, closed overnight, closed for a weekend closure, checking, and can't confirm on Thanksgiving">
 
-Other reasons it won't confirm include a WSDOT notice about today and a saved copy of the page that's more than 2 hours old:
+Other reasons it won't confirm include a WSDOT update the server couldn't read, data more than 2 hours old, WSDOT's sensors showing traffic going the other way, and not reaching the server at all:
 
-<img src="docs/widget-warnings.png" width="600" alt="Two can't confirm widgets: WSDOT posted a notice, and data is 3 hours 25 minutes old">
+<img src="docs/widget-warnings.png" width="600" alt="Four can't confirm widgets: couldn't read WSDOT's latest update, data is 3 hours old, WSDOT's sensors show southbound traffic, and can't reach the server">
 
 ### Widget sizes
 
@@ -33,7 +33,7 @@ The widget is resizable. Smaller sizes drop detail but keep the badge and the ne
 
 - **1 × 1:** the badge and "until 9:00 PM".
 - **2 × 1 and wider:** the badge, direction, next change and today's timeline.
-- **3 × 2 and bigger (the default):** everything above, plus the next changes, hour labels, when WSDOT was last read, and the refresh button.
+- **3 × 2 and bigger (the default):** everything above, plus the next changes, hour labels, when the server last read WSDOT, and the refresh button.
 
 Text is never cut off. It's measured at your phone's font size, and when it doesn't fit the widget uses shorter wording: "Closes at 11:00 PM", then "until 11:00 PM", then "11:00 PM", and "North" for "Northbound". A time never splits across two lines. On a very narrow 1 × 1 the widget leaves the time off rather than cut it.
 
@@ -49,22 +49,28 @@ The app and widget follow the phone's light or dark mode. On Android 12 and late
 
 Tap the widget, or open **I-5 Express** from the app drawer:
 
-- **Status:** the current direction and what happens next, like "Closes at 9:00 PM · in 4h 5m".
-- **Warnings:** each reason the status can't be confirmed, with links to live sources (traffic cameras, [@wsdot_traffic](https://x.com/wsdot_traffic) and WSDOT's page) so you can check before you drive.
-- **Notices:** closures in effect now, tonight's early closure, and WSDOT notices. Old notices that WSDOT hasn't taken down yet are grayed out.
-- **Schedule:** colored timelines for today and tomorrow, with a marker for now.
-- **Coming up:** the next four changes with countdowns. A ⚠ marks days that may not follow the regular schedule.
-- **Planned changes:** weekend closures, early closing dates, and holidays in the next two weeks.
+- **Status:** the current direction and what happens next, like "Closes at 11:00 PM · 6h 5m".
+- **Warnings:** each reason the status can't be confirmed, with links to live sources ([WSDOT Traffic on Bluesky](https://bsky.app/profile/traffic.wsdot.wa.gov), traffic cameras and WSDOT's page) so you can check before you drive.
+- **Notices:** WSDOT notices in effect now or later today, like tonight's early closure, each with a **More info** link.
+- **Schedule:** colored timelines for today and tomorrow, with a marker for now. Stripes mark times the server's timeline doesn't cover yet.
+- **Travel times:** Seattle to Everett and back through the express lanes and the regular lanes, from WSDOT's sensors, with how many minutes the express lanes save and what the regular lanes usually take. It's left out when the reading is more than 30 minutes old.
+- **Cameras:** WSDOT's traffic cameras along the express lanes. The section starts closed, and no pictures load until you open it. Express lane cameras come first, and **Show all cameras along I-5** adds the rest. Pictures refresh every 5 minutes while it's open. Tap one for the full picture, or **map** to see it on WSDOT's travel map. The **Traffic cameras** link in the warnings opens this section.
+- **Coming up:** the next four changes with countdowns. A ⚠ marks days that may not go as planned.
+- **Planned changes:** WSDOT's notices for the next two weeks, like weekend closures and early closing dates, with each time as a bullet. Long lists show 20 times, then **…** for the rest. Each notice says how sure WSDOT is about the times, and has WSDOT's own words and a **More info** link. Holidays with no notice are listed too.
 - **Regular schedule and sources:** the weekly schedule as WSDOT posts it, and links to every page the data comes from.
-- Pull down, or tap the refresh button, to re-read WSDOT's page. Everything the app shows comes from that one page, about 40 KB, so a refresh usually takes well under a second. It also refreshes when you open the app, within the limits in [Settings](#settings).
+- **Data status:** when the server last read WSDOT, which AI models read the notices, and what WSDOT's sensors measured.
+- Pull down, or tap the refresh button, to ask the server again. Its whole answer is about 29 KB, so a refresh usually takes well under a second. It also refreshes when you open the app, within the limits in [Settings](#settings).
 
 Times are always Seattle time. If your phone is set to another time zone, the app and widget say so.
 
 <p>
-  <img src="docs/app.png" width="700" alt="The app showing northbound with tonight's early closure, and on Thanksgiving showing can't confirm with links to live sources">
+  <img src="docs/app.png" width="700" alt="The app showing northbound with travel times, and on Thanksgiving showing can't confirm with links to live sources">
 </p>
 <p>
-  <img src="docs/app-more.png" width="700" alt="Planned changes, regular schedule, settings and sources">
+  <img src="docs/app-cameras.png" width="700" alt="The Cameras section open with express lane camera pictures, and planned changes as bullet lists">
+</p>
+<p>
+  <img src="docs/app-more.png" width="700" alt="Regular schedule, sources, settings and data status">
 </p>
 
 ### Notifications
@@ -83,13 +89,13 @@ To keep alerts useful, the app:
 
 It asks for notification permission when you turn this on, and shows a link to Android's settings if notifications are blocked.
 
-<img src="docs/notifications.png" width="420" alt="Two notifications: I-5 express lanes now northbound, closes at 11:00 PM; and can't confirm the I-5 express lanes, Thanksgiving may run a holiday schedule">
+<img src="docs/notifications.png" width="420" alt="Two notifications: I-5 express lanes now northbound, closes at 11:00 PM; and can't confirm the I-5 express lanes, no word yet on Thanksgiving">
 
 ### Settings
 
 - **Notify when lanes change**, described above.
-- **Check WSDOT on Wi-Fi every** 15 minutes (the default), 30 minutes or 1 hour.
-- **Check WSDOT on mobile data every** 15 minutes, 30 minutes, 1 hour (the default), or **Off**. Each check uses about 45 KB, so 1 hour is at most about 32 MB a month and 15 minutes about 130 MB. On mobile data, opening the app also waits for this setting. With **Off**, the app only uses mobile data when you tap refresh or add a widget. Away from Wi-Fi, the widget then shows ⚠ once the data is 2 hours old, and the app checks again when you're back on Wi-Fi.
+- **Check for updates on Wi-Fi every** 15 minutes (the default), 30 minutes or 1 hour.
+- **Check for updates on mobile data every** 15 minutes, 30 minutes, 1 hour (the default), or **Off**. Each check uses about 35 KB, so 1 hour is at most about 25 MB a month and 15 minutes about 101 MB. Camera pictures only load while the Cameras section is open, and aren't counted here. On mobile data, opening the app also waits for this setting. With **Off**, the app only uses mobile data when you tap refresh or add a widget. Away from Wi-Fi, the widget then shows ⚠ once the data is 2 hours old, and the app checks again when you're back on Wi-Fi.
 - Wi-Fi here means any network Android doesn't treat as metered. A phone hotspot counts as mobile data. Tapping refresh always checks, on any network.
 - **Home screen widget:** an **Add** button that puts the widget on your home screen, on launchers that support it.
 - If exact alarms are off, a note explains that the widget may update up to 10 minutes late, with an **Allow** button. They start off on Android 14 and later. See [Battery and alarms](#battery-and-alarms).
@@ -97,24 +103,18 @@ It asks for notification permission when you turn this on, and shows a link to A
 
 ## When to trust it
 
-WSDOT doesn't publish a live feed for the express lanes. This app reads [WSDOT's express lanes page](https://wsdot.wa.gov/travel/roads-bridges/express-lanes) and works out the status from the posted schedule, early closures and planned closures.
+WSDOT doesn't publish a live feed for the express lanes. The [I-5 server](https://github.com/andrewmacheret/i5-server-lambdas) reads [WSDOT's express lanes page](https://wsdot.wa.gov/travel/roads-bridges/express-lanes) and highway alerts, and publishes a timeline of the lanes along with the times it can't vouch for. The app works out the status from that timeline, with the same rules as the web page.
 
 It only shows **N**, **S** or **✕** when all of these are true:
 
-- It read WSDOT's page in the last 2 hours. It checks on a schedule you pick in [Settings](#settings), when you open the app, and after the phone restarts.
-- Every part of the page made sense. A new section or a line it can't read counts as a problem.
-- The schedule itself looks sane, with no overlapping or backwards time ranges.
-- Nothing on the page suggests today is different. That includes notices dated today, undated notices, and planned closures today without exact times.
-- If today closes early, the page gives the closing time.
-- Today isn't a holiday. WSDOT doesn't post holiday hours.
+- The server read WSDOT in the last 2 hours. The app asks on a schedule you pick in [Settings](#settings), when you open the app, and after the phone restarts.
+- The server has no doubts about right now, like a notice it couldn't pin down, an update it's still reading, or a holiday WSDOT hasn't posted hours for. The server's README lists [every doubt](https://github.com/andrewmacheret/i5-server-lambdas#doubts).
+- The phone's clock agrees with the server's.
+- WSDOT's travel time sensors don't show traffic going the other way.
 
-Otherwise it shows an amber **⚠**, explains why, and links to the [travel map](https://wsdot.com/travel/real-time/map/) and [@wsdot_traffic](https://x.com/wsdot_traffic) so you can check a live source.
+Otherwise it shows an amber **⚠**, explains why, and links to [WSDOT Traffic on Bluesky](https://bsky.app/profile/traffic.wsdot.wa.gov), traffic cameras and WSDOT's page so you can check a live source.
 
-If WSDOT can't be reached, the app keeps using the last good copy of the page, and shows ⚠ once that copy is more than 2 hours old. The widget switches to ⚠ at that moment even if the phone is offline.
-
-If WSDOT's page changes into something the app can't read, it shows ⚠ until it reads a good copy again. It remembers this across restarts and failed downloads, so it never quietly goes back to trusting the old copy.
-
-Notices count from their first date until their last. A notice like "As of Nov. 16, the express lanes are closed" has no end date, so it counts for as long as it's on the page.
+If the server can't be reached, the app keeps using the last good copy, and shows ⚠ once that copy is more than 2 hours old. The widget switches to ⚠ at that moment even if the phone is offline.
 
 It can't know about a closure WSDOT hasn't posted yet, like an emergency repair announced only on social media.
 
@@ -199,8 +199,8 @@ Android only installs an update over an existing copy if both are signed with th
 
 The app doesn't run in the background. Android wakes it:
 
-- every 15 minutes to 1 hour, depending on your settings and whether you're on Wi-Fi, to re-read WSDOT's page;
-- with an exact alarm at the next lane change, at midnight, and when the data would go stale, to redraw the widget. The alarm draws the widget itself instead of waiting for a background job, so the widget flips on time even while the phone is idle.
+- every 15 minutes to 1 hour, depending on your settings and whether you're on Wi-Fi, to ask the server for the latest;
+- with an exact alarm at the next lane change, at midnight, when the data would go stale, and when one of the server's doubts starts or ends, to redraw the widget. The alarm draws the widget itself instead of waiting for a background job, so the widget flips on time even while the phone is idle.
 
 That's a handful of short wake-ups a day.
 
@@ -212,7 +212,7 @@ The Makefile works on macOS and Linux. It uses Android Studio's bundled JDK and 
 
 | Command | What it does |
 | --- | --- |
-| `make test` | Run the parser, schedule, trust and alert tests |
+| `make test` | Run the timeline, trust, page text and alert tests |
 | `make build` | Build the debug APK |
 | `make install` | Build and install the debug APK |
 | `make run` | Install the debug APK and open the app |
@@ -226,15 +226,15 @@ The Makefile works on macOS and Linux. It uses Android Studio's bundled JDK and 
 
 The code is split into two modules:
 
-- `core` is plain Kotlin with no Android code. It reads WSDOT's page (`Parser`), works out the status at any moment (`Engine`), decides whether the status can be trusted (`Trust`), and decides when to alert (`Alerts`). Tests run against a saved copy of WSDOT's page in `core/src/test/resources`.
+- `core` is plain Kotlin with no Android code. It downloads and reads the server's `/status` answer (`Fetcher`, `StatusJson`), looks up the status at any moment (`Timeline`), decides whether it can be trusted (`Trust`), words the app screen (`Page`, `Cameras`), and decides when to alert (`Alerts`). It's a port of `src/core` in [i5-server-lambdas](https://github.com/andrewmacheret/i5-server-lambdas), which is the source of truth, so keep them in step. Tests run against saved server answers in `core/src/test/resources/fixtures`, copied from [i5-client](https://github.com/andrewmacheret/i5-client).
 - `app` is the Android app: the widget (Jetpack Glance), the app screen (Jetpack Compose), background refresh (WorkManager), exact alarms, and notifications.
 
 ### Debug scenarios
 
-Debug builds can show a made-up moment instead of the live status, using a saved copy of WSDOT's page. That's how the screenshots are made, and how you can check every state without waiting for it:
+Debug builds can show a made-up moment instead of the live status. They use the saved server answers from the tests, with the clock moved. That's how the screenshots are made, and how you can check every state without waiting for it:
 
 ```bash
-make scenario NAME=north     # also: evening south closed weekend closure notice holiday stale checking offline broken
+make scenario NAME=north     # also: evening south closed weekend closure notice holiday stale checking failed sensors saved offline loading
 make scenario NAME=live      # back to the real status
 ```
 
@@ -275,11 +275,11 @@ The app isn't on Google Play yet, but it's ready to upload. When you set up Play
 
 ## Privacy
 
-The app collects nothing. It only talks to WSDOT, and everything it saves stays on your phone. See the [privacy policy](PRIVACY.md).
+The app collects nothing. It downloads the schedule from the I-5 server, which keeps no record of requests, and only loads camera pictures from WSDOT when you open the Cameras section. Everything it saves stays on your phone. See the [privacy policy](PRIVACY.md).
 
 ## Health check
 
-The Canary workflow (`.github/workflows/canary.yml`) runs `LivePageTest` once a day with `I5_LIVE=1`. It reads WSDOT's real page, so it fails when WSDOT changes the page in a way the parser can't read. Normal test runs skip it. It's started by [andrewmacheret/canary](https://github.com/andrewmacheret/canary).
+The Canary workflow (`.github/workflows/canary.yml`) runs `LiveStatusTest` once a day with `I5_LIVE=1`. It reads the I-5 server's real answer with the app's own code, and fails if the app can't read it or the timeline doesn't cover today. Normal test runs skip it. It's started by [andrewmacheret/canary](https://github.com/andrewmacheret/canary).
 
 ## Built with LLM tools
 
@@ -287,7 +287,7 @@ This project was written with LLM coding tools: an AI agent in [Cursor](https://
 
 ## Not affiliated with WSDOT
 
-This is a personal project. Schedule data comes from the Washington State Department of Transportation. Always follow posted signs on the road.
+This is a personal project. Schedule data comes from the Washington State Department of Transportation, by way of the I-5 server. Always follow posted signs on the road.
 
 ## License
 

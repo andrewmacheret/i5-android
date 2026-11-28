@@ -7,60 +7,69 @@ import java.time.LocalDate
 /** Everything the widget and detail screen show, worked out once. */
 data class Snapshot(
     val now: Instant,
-    val result: FetchResult,
+    val today: LocalDate,
+    val status: ServerStatus,
     val check: Assessment,
     val changes: List<Change>,
-    val today: List<Segment>,
-    val tomorrow: List<Segment>,
-    val tomorrowConcerns: List<Concern>,
-    /** Days in the next week that may not follow the schedule */
+    val todaySegments: List<DaySegment>,
+    val tomorrowSegments: List<DaySegment>,
+    val tomorrowDoubts: List<Doubt>,
+    /** Days in the next week with something the server can't vouch for */
     val doubtfulDays: Set<LocalDate>,
-    val activeClosure: Closure?,
-    val earlyCloseTonight: TimeOfDay?,
+    /** The app is downloading a new copy right now */
+    val refreshing: Boolean = false,
+    /** Why the app's last download failed, if it did */
+    val loadError: String? = null,
 ) {
     val next: Change? get() = changes.firstOrNull()
-    val todayDay: LocalDate get() = Seattle.day(now)
-    val engine: Engine get() = Engine(result.info)
 
-    /** "Closes at 9:00 PM", "Opens southbound at 5:00 AM tomorrow" */
+    /** "Closes at 9:00 PM" */
     val nextText: String
         get() {
-            val n = next ?: return "No changes in the next week"
+            val n = next ?: return "No changes coming up"
+            if (n.to == LaneStatus.UNKNOWN) return "Schedule unknown after ${Format.whenText(n.at, now)}"
             return "${verb(check.scheduled, n.to)} at ${Format.whenText(n.at, now)}"
         }
 
-    /** Holidays in the next two weeks */
-    val upcomingHolidays: List<Pair<LocalDate, String>>
-        get() = (0L..14L).mapNotNull { offset ->
-            val d = todayDay.plusDays(offset)
-            Holidays.name(d)?.let { d to it }
-        }
+    /** True when the lanes flip within 15 minutes */
+    val changingSoon: Boolean
+        get() = next?.let { it.to != LaneStatus.UNKNOWN && Duration.between(now, it.at) <= Duration.ofMinutes(15) } ?: false
 
     companion object {
-        fun make(result: FetchResult, now: Instant, refreshing: Boolean = false): Snapshot {
-            val engine = Engine(result.info)
+        private val ALL_UNKNOWN = listOf(DaySegment(TimeOfDay.MIDNIGHT, TimeOfDay.END_OF_DAY, LaneStatus.UNKNOWN))
+
+        fun make(status: ServerStatus, now: Instant, refreshing: Boolean = false, loadError: String? = null): Snapshot {
+            val p = status.published
             val today = Seattle.day(now)
             val tomorrow = today.plusDays(1)
-            val doubtful = (0L..7L).map { today.plusDays(it) }
-                .filter { Trust.dayConcerns(result.info, it, today).isNotEmpty() }
-                .toSet()
+            val doubtful = mutableSetOf<LocalDate>()
+            if (p != null) {
+                for (i in 0L..7L) {
+                    val d = today.plusDays(i)
+                    val from = maxOf(now, Seattle.startOfDay(d))
+                    if (Timeline.doubtsBetween(p, from, Seattle.startOfDay(d.plusDays(1))).isNotEmpty()) doubtful += d
+                }
+            }
             return Snapshot(
                 now = now,
-                result = result,
-                check = Trust.assess(result, now, refreshing),
-                changes = engine.upcomingChanges(now, limit = 4),
-                today = engine.segments(today),
-                tomorrow = engine.segments(tomorrow),
-                tomorrowConcerns = Trust.dayConcerns(result.info, tomorrow, today),
+                today = today,
+                status = status,
+                check = Trust.assess(status, now, refreshing),
+                changes = p?.let { Timeline.upcomingChanges(it, now, 4) } ?: emptyList(),
+                todaySegments = p?.let { Timeline.daySegments(it, today) } ?: ALL_UNKNOWN,
+                tomorrowSegments = p?.let { Timeline.daySegments(it, tomorrow) } ?: ALL_UNKNOWN,
+                tomorrowDoubts = p?.let { Timeline.doubtsBetween(it, Seattle.startOfDay(tomorrow), Seattle.startOfDay(tomorrow.plusDays(1))) } ?: emptyList(),
                 doubtfulDays = doubtful,
-                activeClosure = engine.closure(now),
-                earlyCloseTonight = engine.earlyCloseTime(today),
+                refreshing = refreshing,
+                loadError = loadError,
             )
         }
 
+        /** "Closes", "Opens northbound", "Switches southbound" */
         fun verb(current: LaneStatus, to: LaneStatus): String = when {
+            to == LaneStatus.UNKNOWN -> "Schedule unknown"
             to == LaneStatus.CLOSED -> "Closes"
-            current == LaneStatus.CLOSED -> "Opens ${to.title.lowercase()}"
+            current == LaneStatus.CLOSED || current == LaneStatus.UNKNOWN -> "Opens ${to.title.lowercase()}"
             else -> "Switches ${to.title.lowercase()}"
         }
     }
@@ -83,9 +92,9 @@ object Alerts {
 
     /**
      * True when it's too soon to judge, so nothing is sent and the last [Seen] is kept:
-     * - a refresh is running, or every problem is old data that a refresh should fix
+     * - a refresh or a server read is running, or every problem is missing or old data that a refresh should fix
      *   (this also keeps it quiet at boot and overnight when the network is asleep)
-     * - the posted schedule says closed, so a "can't confirm" can wait until the lanes
+     * - the timeline says closed, so a "can't confirm" can wait until the lanes
      *   would open instead of buzzing at midnight
      */
     fun waiting(snap: Snapshot): Boolean {
@@ -108,13 +117,15 @@ object Alerts {
         val expected = old.nextAt ?: return null
         if (Duration.between(expected, snap.now) > LATE_LIMIT) return null
         val next = snap.next
-        if (new.scheduled == LaneStatus.CLOSED && next != null && Duration.between(snap.now, next.at) < SHORT_GAP) return null
+        if (new.scheduled == LaneStatus.CLOSED && next != null && next.to != LaneStatus.UNKNOWN &&
+            Duration.between(snap.now, next.at) < SHORT_GAP
+        ) return null
         return change(new.scheduled, next, snap.now)
     }
 
     fun change(status: LaneStatus, next: Change?, now: Instant): Message {
         val title = if (status == LaneStatus.CLOSED) "I-5 express lanes closed" else "I-5 express lanes now ${status.title.lowercase()}"
-        val body = next?.let { "${Snapshot.verb(status, it.to)} at ${Format.whenText(it.at, now)}" } ?: ""
+        val body = next?.takeIf { it.to != LaneStatus.UNKNOWN }?.let { "${Snapshot.verb(status, it.to)} at ${Format.whenText(it.at, now)}" } ?: ""
         return Message(title, body)
     }
 
