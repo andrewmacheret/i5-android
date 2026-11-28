@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -57,6 +56,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -74,7 +74,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalContext
@@ -99,7 +98,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.andrewmacheret.i5.Alarms
-import com.andrewmacheret.i5.CameraImages
 import com.andrewmacheret.i5.Drawing
 import com.andrewmacheret.i5.LaneColors
 import com.andrewmacheret.i5.Lanes
@@ -440,6 +438,10 @@ private fun CamerasSection(cameras: List<Camera>, open: Boolean, onToggle: () ->
                     OutlinedButton(onClick = { all = !all }, contentPadding = PaddingValues(horizontal = 14.dp)) { Text(label) }
                 }
                 Text(Cameras.HINT, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val uri = LocalUriHandler.current
+                TextButton(onClick = { runCatching { uri.openUri(Sources.TRAVEL_MAP) } }, contentPadding = PaddingValues(0.dp)) {
+                    Text(Cameras.MAP_LINK)
+                }
             }
         }
     }
@@ -459,54 +461,13 @@ private fun CameraGrid(cameras: List<Camera>) {
             }
         }
     }
+    val version = Cameras.version(now)
     Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 8.dp)) {
         for (row in cameras.chunked(2)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                for (c in row) CameraTile(c, now, Modifier.weight(1f))
+                for (c in row) key(c.id) { CameraTile(c, version, Modifier.weight(1f)) }
                 if (row.size == 1) Spacer(Modifier.weight(1f))
             }
-        }
-    }
-}
-
-@Composable
-private fun CameraTile(c: Camera, now: Instant, modifier: Modifier) {
-    val uri = LocalUriHandler.current
-    val url = Cameras.imageUrl(c, now)
-    // Keyed on the camera, so the last picture stays up while the next one loads
-    var picture by remember(c.image) { mutableStateOf(CameraImages.cached(url)) }
-    LaunchedEffect(url) {
-        // Try once more if WSDOT is slow, rather than stay blank until the next picture
-        for (attempt in 1..2) {
-            CameraImages.load(url)?.let {
-                picture = it
-                return@LaunchedEffect
-            }
-            delay(5_000)
-        }
-    }
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .aspectRatio(335f / 244f)
-                .clip(RoundedCornerShape(6.dp))
-                .background(LaneColors.timeline(LaneStatus.CLOSED))
-                .clickable { runCatching { uri.openUri(c.image) } },
-        ) {
-            picture?.let {
-                Image(it.asImageBitmap(), contentDescription = "WSDOT camera at ${c.name}", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-            }
-        }
-        Text(c.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("${Cameras.milepost(c)} · ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(
-                "map",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable { runCatching { uri.openUri(Cameras.mapLink(c)) } },
-            )
         }
     }
 }

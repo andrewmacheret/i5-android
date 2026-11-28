@@ -19,8 +19,17 @@ object Cameras {
     // Like JavaScript's toFixed(5), which rounds the exact binary value half away from zero
     private fun fixed5(n: Double) = BigDecimal(n).setScale(5, RoundingMode.HALF_UP).toPlainString()
 
-    /** The picture's address, which changes every 5 minutes so caches fetch a new one */
-    fun imageUrl(c: Camera, now: Instant): String = "${c.image}?v=${Math.floorDiv(now.toEpochMilli(), REFRESH_EVERY.toMillis())}"
+    /** Goes up every 5 minutes, when WSDOT has a new picture */
+    fun version(now: Instant): Long = Math.floorDiv(now.toEpochMilli(), REFRESH_EVERY.toMillis())
+
+    /** The picture's address. The version changes every 5 minutes, and `reload` on each retry or reload, so caches fetch a new one. */
+    fun imageUrl(c: Camera, version: Long, reload: Int = 0): String = "${c.image}?v=$version${if (reload > 0) "-$reload" else ""}"
+
+    /** How long to wait before each retry of a picture that didn't load */
+    val RETRY_DELAYS: List<Duration> = listOf(Duration.ofSeconds(5), Duration.ofSeconds(15), Duration.ofSeconds(45))
+
+    /** The wait after this many failed tries, or null when it's time to give up */
+    fun retryDelay(failures: Int): Duration? = RETRY_DELAYS.getOrNull(failures - 1)
 
     fun express(cameras: List<Camera>) = cameras.filter { it.express }
 
@@ -48,4 +57,14 @@ object Cameras {
     fun milepost(c: Camera) = "MP ${Format.number(c.milepost)}"
 
     const val HINT = "From WSDOT. Each picture updates about every 5 minutes."
+
+    /** Under the hint, to Sources.TRAVEL_MAP */
+    const val MAP_LINK = "All cameras on WSDOT's travel map"
+
+    /** In the picture's spot once every try has failed */
+    const val FAILED = "Picture didn't load"
+
+    fun reloadLabel(c: Camera) = "Reload the picture from ${c.name}"
+
+    const val OPEN_IN_BROWSER = "Open in browser"
 }

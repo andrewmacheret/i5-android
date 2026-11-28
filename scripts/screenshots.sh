@@ -4,7 +4,10 @@
 # Needs: the Medium_Phone_API_37.0 emulator (1080 x 2400), a debug build installed,
 # and one I-5 widget at its default 3 x 2 size in the top left of the second home page.
 # Crop boxes below assume that layout.
+#
+# scripts/screenshots.sh cameras redoes just the Cameras images, and needs no widget.
 set -euo pipefail
+ONLY="${1:-all}"
 
 cd "$(dirname "$0")/.."
 SDK="${SDK:-${ANDROID_HOME:-$HOME/Library/Android/sdk}}"
@@ -15,7 +18,6 @@ OUT=docs
 TMP="$(mktemp -d)"
 PKG=com.andrewmacheret.i5
 mkdir -p "$OUT"
-"$JAVA" scripts/Icon.java "$OUT/app-icon.png"
 "$ADB" shell svc power stayon true
 "$ADB" shell input keyevent KEYCODE_WAKEUP
 "$ADB" shell wm dismiss-keyguard
@@ -83,6 +85,59 @@ tap_text() {
   exit 1
 }
 
+# Taps the first thing whose description starts with $1
+tap_desc() {
+  local box
+  box=$("$ADB" exec-out uiautomator dump /dev/tty |
+    grep -o "content-desc=\"$1[^\"]*\"[^>]*bounds=\"\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]\"" |
+    head -1 | grep -o '\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]' || true)
+  if [ -z "$box" ]; then
+    echo "Couldn't find \"$1\" on screen" >&2
+    exit 1
+  fi
+  read -r x1 y1 x2 y2 <<< "$(echo "$box" | tr -c '0-9' ' ')"
+  "$ADB" shell input tap $(((x1 + x2) / 2)) $(((y1 + y2) / 2))
+  sleep 2
+}
+
+# Double taps faster than adb's input tap can
+double_tap() {
+  "$ADB" shell "input motionevent DOWN $1 $2; sleep 0.05; input motionevent UP $1 $2; sleep 0.08;
+    input motionevent DOWN $1 $2; sleep 0.05; input motionevent UP $1 $2"
+  sleep 1
+}
+
+# Opens Cameras, waits for the pictures from WSDOT, then opens one full screen
+cameras() {
+  scenario north
+  app
+  tap_text "Show [0-9]* express lane camera"
+  scroll 450
+  sleep 8
+  shot app-cameras
+  tap_desc "WSDOT camera at"
+  shot camera-dialog
+  double_tap 540 1200
+  shot camera-zoomed
+  "$ADB" shell input keyevent KEYCODE_BACK
+  sleep 1
+  scroll 200
+  scroll 200
+  shot app-planned
+  stitch "$OUT/app-cameras.png" 2 0.4 full "$TMP/app-cameras.png" "$TMP/app-planned.png"
+  stitch "$OUT/app-camera-dialog.png" 2 0.4 full "$TMP/camera-dialog.png" "$TMP/camera-zoomed.png"
+}
+
+if [ "$ONLY" = cameras ]; then
+  cameras
+  scenario live
+  rm -rf "$TMP"
+  echo "Wrote the Cameras images to $OUT/"
+  exit 0
+fi
+
+"$JAVA" scripts/Icon.java "$OUT/app-icon.png"
+
 # Widget states on a real home screen
 home
 for s in north south closed closure checking holiday failed stale sensors offline; do
@@ -111,14 +166,7 @@ stitch "$OUT/widget-sizes.png" 1 0.5 0,110,1080,1760 "$TMP/gallery.png"
 scenario north
 app
 shot app-north
-# Opens Cameras, then waits for the pictures from WSDOT
-tap_text "Show [0-9]* express lane camera"
-scroll 450
-sleep 8
-shot app-cameras
-scroll 200
-scroll 200
-shot app-planned
+cameras
 # The end of the screen, then back up to the regular schedule and sources
 app
 bottom
@@ -130,7 +178,6 @@ scenario holiday
 app
 shot app-holiday
 stitch "$OUT/app.png" 2 0.4 full "$TMP/app-north.png" "$TMP/app-holiday.png"
-stitch "$OUT/app-cameras.png" 2 0.4 full "$TMP/app-cameras.png" "$TMP/app-planned.png"
 stitch "$OUT/app-more.png" 2 0.4 full "$TMP/app-sources.png" "$TMP/app-end.png"
 
 # Dark mode

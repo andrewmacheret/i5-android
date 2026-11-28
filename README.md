@@ -54,7 +54,7 @@ Tap the widget, or open **I-5 Express** from the app drawer:
 - **Notices:** WSDOT notices in effect now or later today, like tonight's early closure, each with a **More info** link.
 - **Schedule:** colored timelines for today and tomorrow, with a marker for now. Stripes mark times the server's timeline doesn't cover yet.
 - **Travel times:** Seattle to Everett and back through the express lanes and the regular lanes, from WSDOT's sensors, with how many minutes the express lanes save and what the regular lanes usually take. It's left out when the reading is more than 30 minutes old.
-- **Cameras:** WSDOT's traffic cameras along the express lanes. The section starts closed, and no pictures load until you open it. Express lane cameras come first, and **Show all cameras along I-5** adds the rest. Pictures refresh every 5 minutes while it's open. Tap one for the full picture, or **map** to see it on WSDOT's travel map. The **Traffic cameras** link in the warnings opens this section.
+- **Cameras:** WSDOT's traffic cameras along the express lanes. The section starts closed, and no pictures load until you open it. Express lane cameras come first, and **Show all cameras along I-5** adds the rest. Pictures refresh every 5 minutes while it's open. If a picture doesn't load, the app tries 3 more times, after 5, 15 and 45 seconds, and then shows "Picture didn't load" in its place. The small reload button at the end of each camera's line loads its picture again right away. Tap a picture to see it full screen, where you can pinch or double tap to zoom, drag to look around, reload it, or tap **Open in browser** for WSDOT's file. **map** shows one camera on WSDOT's travel map, and **All cameras on WSDOT's travel map** under the pictures shows them all. The **Traffic cameras** link in the warnings opens this section.
 - **Coming up:** the next four changes with countdowns. A ⚠ marks days that may not go as planned.
 - **Planned changes:** WSDOT's notices for the next two weeks, like weekend closures and early closing dates, with each time as a bullet. Long lists show 20 times, then **…** for the rest. Each notice says how sure WSDOT is about the times, and has WSDOT's own words and a **More info** link. Holidays with no notice are listed too.
 - **Regular schedule and sources:** the weekly schedule as WSDOT posts it, and links to every page the data comes from.
@@ -67,7 +67,10 @@ Times are always Seattle time. If your phone is set to another time zone, the ap
   <img src="docs/app.png" width="700" alt="The app showing northbound with travel times, and on Thanksgiving showing can't confirm with links to live sources">
 </p>
 <p>
-  <img src="docs/app-cameras.png" width="700" alt="The Cameras section open with express lane camera pictures, and planned changes as bullet lists">
+  <img src="docs/app-cameras.png" width="700" alt="The Cameras section open with express lane camera pictures, each with a reload button, and planned changes as bullet lists">
+</p>
+<p>
+  <img src="docs/app-camera-dialog.png" width="700" alt="A camera picture full screen on a dark background with its name, milepost, map link, reload and close buttons, and the same picture zoomed in">
 </p>
 <p>
   <img src="docs/app-more.png" width="700" alt="Regular schedule, sources, settings and data status">
@@ -222,7 +225,7 @@ The Makefile works on macOS and Linux. It uses Android Studio's bundled JDK and 
 | `make lint` | Run Android lint |
 | `make scenario NAME=holiday` | Show a made-up moment, debug builds only (see below) |
 | `make gallery` | Open the widget size gallery, debug builds only. `make gallery MORE=1` adds narrow and in-between sizes, for checking that no text gets cut off |
-| `make screenshots` | Regenerate the images in `docs/` |
+| `make screenshots` | Regenerate the images in `docs/`. `scripts/screenshots.sh cameras` redoes just the Cameras images, and doesn't need the widget on the home screen |
 
 The code is split into two modules:
 

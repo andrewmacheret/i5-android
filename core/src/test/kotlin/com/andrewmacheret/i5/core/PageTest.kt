@@ -226,13 +226,45 @@ class CamerasTest {
 
     @Test fun showWsdotsPictureWhichChangesAddressEvery5MinutesWithItsMilepost() {
         val c = cameras[1]
-        val url = Cameras.imageUrl(c, f.at)
+        val url = Cameras.imageUrl(c, Cameras.version(f.at))
         assertTrue(Regex("^https://images\\.wsdot\\.wa\\.gov/nw/\\w+\\.jpg\\?v=\\d+$").matches(url), url)
         assertEquals("Roanoke St Express Lanes", c.name)
         assertEquals("MP 168", Cameras.milepost(c))
         assertEquals("MP 168.8", Cameras.milepost(cameras[2]))
-        assertEquals(url, Cameras.imageUrl(c, f.at.plusSeconds(60)))
-        assertNotEquals(url, Cameras.imageUrl(c, f.at.plus(Duration.ofMinutes(5))))
+        assertEquals(Cameras.version(f.at), Cameras.version(f.at.plusSeconds(60)))
+        assertEquals(Cameras.version(f.at) + 1, Cameras.version(f.at.plus(Duration.ofMinutes(5))))
+        assertEquals(5_903_370L, Cameras.version(java.time.Instant.ofEpochMilli(1_771_011_000_000L)))
+    }
+
+    @Test fun giveEachRetryOrReloadANewAddress() {
+        val c = cameras[0]
+        assertEquals("${c.image}?v=100", Cameras.imageUrl(c, 100))
+        assertEquals("${c.image}?v=100", Cameras.imageUrl(c, 100, 0))
+        assertEquals("${c.image}?v=100-1", Cameras.imageUrl(c, 100, 1))
+        assertEquals("${c.image}?v=100-2", Cameras.imageUrl(c, 100, 2))
+        assertNotEquals(Cameras.imageUrl(c, 100, 1), Cameras.imageUrl(c, 101, 1))
+    }
+
+    @Test fun retryAPictureThreeTimesWaitingLongerEachTime() {
+        assertEquals(listOf(5L, 15L, 45L), Cameras.RETRY_DELAYS.map { it.seconds })
+        assertEquals(Duration.ofSeconds(5), Cameras.retryDelay(1))
+        assertEquals(Duration.ofSeconds(15), Cameras.retryDelay(2))
+        assertEquals(Duration.ofSeconds(45), Cameras.retryDelay(3))
+        // The fourth failure is the last
+        assertNull(Cameras.retryDelay(4))
+        assertNull(Cameras.retryDelay(0))
+    }
+
+    @Test fun sayWhenAPictureDidntLoadAndHowToReloadIt() {
+        assertEquals("Picture didn't load", Cameras.FAILED)
+        assertEquals("Reload the picture from Roanoke St Express Lanes", Cameras.reloadLabel(cameras[1]))
+        assertEquals("Open in browser", Cameras.OPEN_IN_BROWSER)
+    }
+
+    @Test fun linkToEveryCameraOnTheTravelMapUnderTheHint() {
+        assertEquals("From WSDOT. Each picture updates about every 5 minutes.", Cameras.HINT)
+        assertEquals("All cameras on WSDOT's travel map", Cameras.MAP_LINK)
+        assertTrue(Sources.TRAVEL_MAP.startsWith("https://wsdot.com/Travel/Real-time/Map/?layers=traffic-flow%2Calert%2Ccamera"))
     }
 
     @Test fun linkToTheTravelMapZoomedInOnTheCamera() {
